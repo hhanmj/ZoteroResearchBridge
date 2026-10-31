@@ -2,6 +2,7 @@
 
 import * as exporter from "./exporter";
 import * as sync from "./sync";
+import * as parser from "./parser";
 import * as ledger from "./ledger";
 
 export function registerMenu(): void {
@@ -21,6 +22,13 @@ export function registerMenu(): void {
     label: "ZRB: 导出全库缺失缓存",
     commandListener: () => {
       exporter.exportAllMissing().catch((e) => Zotero.logError(e));
+    },
+  });
+  ztoolkit.Menu.register("menuTools", {
+    tag: "menuitem",
+    label: "ZRB: 解析无缓存条目（OXR/MinerU · 消耗额度）",
+    commandListener: () => {
+      parser.parseMissing().catch((e) => Zotero.logError(e));
     },
   });
   ztoolkit.Menu.register("menuTools", {

@@ -80,7 +80,16 @@ function libraryScope(libraryID: number): string {
 }
 
 function cacheDirFor(attachmentId: number): string {
+  // 优先旧插件缓存（llm-for-zotero），回退本插件 API 解析产出（zrb-cache）
   return PathUtils.join(Zotero.DataDirectory.dir, "llm-for-zotero-mineru", String(attachmentId));
+}
+
+async function resolveCacheDir(attachmentId: number): Promise<string | null> {
+  const legacy = cacheDirFor(attachmentId);
+  if (await IOUtils.exists(PathUtils.join(legacy, "full.md"))) return legacy;
+  const own = PathUtils.join(Zotero.DataDirectory.dir, "zrb-cache", String(attachmentId));
+  if (await IOUtils.exists(PathUtils.join(own, "full.md"))) return own;
+  return null;
 }
 
 export function getStagingDir(): string {
@@ -100,7 +109,7 @@ async function readCache(attachmentId: number): Promise<{
   contentHash: string | null;
   images: { name: string; bytes: Uint8Array }[];
 } | null> {
-  const dir = cacheDirFor(attachmentId);
+  const dir = (await resolveCacheDir(attachmentId)) || cacheDirFor(attachmentId);
   const fullMdPath = PathUtils.join(dir, "full.md");
   if (!(await IOUtils.exists(fullMdPath))) return null;
   const fullMd = await IOUtils.readUTF8(fullMdPath);
@@ -297,7 +306,7 @@ export async function exportAllMissing(): Promise<void> {
     for (const it of items) {
       for (const a of pdfAttachmentsOf(it)) {
         const e = ledger.entry(a.key);
-        if (!e || e.status === "not_parsed" || e.status === "export_failed") atts.push(a);
+        if (!e || ["not_parsed", "export_failed", "parsed"].includes(e.status)) atts.push(a);
       }
     }
   }

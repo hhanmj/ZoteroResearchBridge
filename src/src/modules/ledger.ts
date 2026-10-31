@@ -3,7 +3,8 @@
 
 export type TaskStatus =
   | "not_parsed" // 无本地 MinerU 缓存
-  | "parsed" // 有缓存
+  | "parsing" // API 解析进行中
+  | "parsed" // 有缓存（本地或 API 解析产出）
   | "exported" // 已导出到上传暂存区
   | "queued_upload" // 待 S3 上传（P3）
   | "uploaded" // 已上传（P3）
@@ -26,6 +27,8 @@ export interface LedgerEntry {
   chunkCount?: number;
   exportedAt?: string | null;
   figuresUploaded?: boolean;
+  parseEngine?: string | null;
+  parseTime?: string | null;
   s3Prefix?: string | null;
   uploadedAt?: string | null;
   error?: string | null;

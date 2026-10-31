@@ -18,6 +18,13 @@ declare namespace _ZoteroTypes {
       "verifyUpload": boolean;
       "autoSync": boolean;
       "figuresSync": boolean;
+      "parseEngine": string;
+      "oxrApiKey": string;
+      "mineruToken": string;
+      "parseMaxDaily": number;
+      "parseConfirmed": boolean;
+      "parseDailyDate": string;
+      "parseDailyUsed": number;
     };
   }
 }

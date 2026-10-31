@@ -38,6 +38,24 @@
     <html:input type="text" preference="uaApp" flex="1" />
   </hbox>
 
+  <label><html:h2>解析引擎（替代 llm-for-zotero 的 MinerU 功能）</html:h2></label>
+  <hbox align="center">
+    <html:label style="width: 160px">引擎（OXR 或 MinerU）</html:label>
+    <html:input type="text" preference="parseEngine" flex="1" />
+  </hbox>
+  <hbox align="center">
+    <html:label style="width: 160px">OXR API Key（sk-…）</html:label>
+    <html:input type="password" preference="oxrApiKey" flex="1" />
+  </hbox>
+  <hbox align="center">
+    <html:label style="width: 160px">MinerU Token</html:label>
+    <html:input type="password" preference="mineruToken" flex="1" />
+  </hbox>
+  <hbox align="center">
+    <html:label style="width: 160px">每日解析上限（篇）</html:label>
+    <html:input type="text" preference="parseMaxDaily" flex="1" />
+  </hbox>
+
   <label><html:h2>行为</html:h2></label>
   <checkbox preference="verifyUpload" label="上传后 HEAD 验证（推荐）" />
   <checkbox preference="figuresSync" label="同步图片到 S3（默认关闭，可用菜单单独跑）" />
