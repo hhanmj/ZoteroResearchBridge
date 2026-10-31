@@ -1,0 +1,25 @@
+# 构建产物与依赖
+src/node_modules/
+src/.scaffold/
+dist/*.map
+
+# 本地文献资产（版权数据，仅存本机/私有云）
+export-full/
+
+# 环境与密钥（绝不入库）
+.env
+*.secret
+zrb-secrets/
+capsule-s3.json
+kb-mcp-authkey.txt
+
+# Zotero 运行时数据（在用户数据目录，不应出现在仓库）
+zrb-ledger.json
+zrb-debug.log
+sync-report.json
+
+# 系统文件
+Thumbs.db
+.DS_Store
+__pycache__/
+*.pyc

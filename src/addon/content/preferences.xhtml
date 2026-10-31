@@ -1,0 +1,52 @@
+<linkset>
+  <html:link rel="localization" href="__addonRef__-preferences.ftl" />
+</linkset>
+<vbox>
+  <label><html:h2>上传暂存区</html:h2></label>
+  <hbox align="center">
+    <html:label style="width: 160px">暂存目录（空 = 数据目录/zrb-upload-staging）</html:label>
+    <html:input type="text" preference="stagingDir" flex="1" />
+  </hbox>
+
+  <label><html:h2>中国科技云 S3（数据胶囊）</html:h2></label>
+  <hbox align="center">
+    <html:label style="width: 160px">Endpoint</html:label>
+    <html:input type="text" preference="s3Endpoint" flex="1" />
+  </hbox>
+  <hbox align="center">
+    <html:label style="width: 160px">Region</html:label>
+    <html:input type="text" preference="s3Region" flex="1" />
+  </hbox>
+  <hbox align="center">
+    <html:label style="width: 160px">Bucket（桶名）</html:label>
+    <html:input type="text" preference="s3Bucket" flex="1" />
+  </hbox>
+  <hbox align="center">
+    <html:label style="width: 160px">AccessKey ID</html:label>
+    <html:input type="text" preference="s3AccessKey" flex="1" />
+  </hbox>
+  <hbox align="center">
+    <html:label style="width: 160px">AccessKey Secret（本地存储）</html:label>
+    <html:input type="password" preference="s3Secret" flex="1" />
+  </hbox>
+  <hbox align="center">
+    <html:label style="width: 160px">或密钥文件路径（优先级低）</html:label>
+    <html:input type="text" preference="s3SecretFile" flex="1" />
+  </hbox>
+  <hbox align="center">
+    <html:label style="width: 160px">UA 应用名（平台 UA 绑定）</html:label>
+    <html:input type="text" preference="uaApp" flex="1" />
+  </hbox>
+
+  <label><html:h2>行为</html:h2></label>
+  <checkbox preference="verifyUpload" label="上传后 HEAD 验证（推荐）" />
+  <checkbox preference="figuresSync" label="同步图片到 S3（默认关闭，可用菜单单独跑）" />
+  <checkbox preference="autoSync" label="自动同步（暂未实现，占位）" />
+
+  <label class="zotero-text-link" style="margin-top: 8px">
+    <html:span style="color: gray; font-size: 12px">
+      提示：留空 Secret 且不填密钥文件时，自动尝试 ~/.zrb-secrets/capsule-s3.json；
+      UA 应用名需与数据胶囊控制台创建 AccessKey 时所选"应用"一致（默认 S3Drive）。
+    </html:span>
+  </label>
+</vbox>

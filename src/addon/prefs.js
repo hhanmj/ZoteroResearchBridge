@@ -1,0 +1,11 @@
+pref("stagingDir", "");
+pref("s3Endpoint", "https://s3.cstcloud.cn");
+pref("s3Region", "us-east-1");
+pref("s3Bucket", "");
+pref("s3AccessKey", "");
+pref("s3Secret", "");
+pref("s3SecretFile", "");
+pref("uaApp", "S3Drive");
+pref("verifyUpload", true);
+pref("autoSync", false);
+pref("figuresSync", false);
