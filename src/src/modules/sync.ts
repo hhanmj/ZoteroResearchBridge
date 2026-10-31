@@ -118,11 +118,19 @@ async function listFigureFiles(dir: string): Promise<string[]> {
 
 async function uploadFile(
   cfg: s3.S3Config, key: string, path: string, contentType: string,
-): Promise<{ ok: boolean; detail: string }> {
+  progress?: { changeLine: (o: any) => void },
+  baseLabel = "S3 同步",
+  progressPct = 0,
+): Promise<{ ok: boolean; detail: string; rateLimited?: boolean }> {
   const bytes = await IOUtils.read(path);
-  const put = await s3.putObject(cfg, key, bytes, contentType);
+  const put = await s3.putObject(cfg, key, bytes, contentType, (info) =>
+    progress?.changeLine({
+      text: `${baseLabel} 网关限速，退避 ${Math.round(info.waitMs / 1000)}s（第 ${info.attempt} 次）`,
+      progress: progressPct,
+    }),
+  );
   if (put.status < 200 || put.status >= 300) {
-    return { ok: false, detail: `PUT ${put.status}${put.error ? " " + put.error : ""}` };
+    return { ok: false, detail: `PUT ${put.status}${put.error ? " " + put.error : ""}`, rateLimited: put.status === 429 };
   }
   // 内容级验证：S3 简单 PUT 的 ETag = 内容 MD5（省一次请求，比 HEAD 更强）
   if (put.etag) {
@@ -133,14 +141,21 @@ async function uploadFile(
     }
     return { ok: true, detail: "" };
   }
-  const verify = await s3.headObject(cfg, key);
-  if (verify.status !== 200) {
-    return { ok: false, detail: `HEAD 验证失败 ${verify.status}` };
+  // 无 ETag：HEAD 验证（对最终一致性 404 重试 2 次，间隔 2s）
+  for (let attempt = 0; attempt < 3; attempt++) {
+    if (attempt > 0) await new Promise((r) => setTimeout(r, 2000));
+    const verify = await s3.headObject(cfg, key);
+    if (verify.status === 200) {
+      if (verify.contentLength !== null && verify.contentLength !== bytes.length) {
+        return { ok: false, detail: `长度不一致 本地=${bytes.length} 远端=${verify.contentLength}` };
+      }
+      return { ok: true, detail: "" };
+    }
+    if (verify.status !== 404) {
+      return { ok: false, detail: `HEAD 验证失败 ${verify.status}` };
+    }
   }
-  if (verify.contentLength !== null && verify.contentLength !== bytes.length) {
-    return { ok: false, detail: `长度不一致 本地=${bytes.length} 远端=${verify.contentLength}` };
-  }
-  return { ok: true, detail: "" };
+  return { ok: false, detail: "PUT 返回成功但对象暂不可见（最终一致性？）" };
 }
 
 export async function debugLog(msg: string): Promise<void> {
@@ -215,6 +230,8 @@ async function syncToS3Inner(): Promise<void> {
   const failed: string[] = [];
 
   const report: any = { startedAt: new Date().toISOString(), uploaded: 0, skipped: 0, failed: [] as any[] };
+  let consecutiveRateLimit = 0;
+  let aborted = false;
   for (const e of targets) {
     try {
     const dir = paperDirOf(e);
@@ -235,8 +252,12 @@ async function syncToS3Inner(): Promise<void> {
     let err: string | null = null;
 
     // 1) fulltext.md
-    const r1 = await uploadFile(cfg, `${prefix}/fulltext.md`, ftPath, "text/markdown; charset=utf-8");
+    const r1 = await uploadFile(
+      cfg, `${prefix}/fulltext.md`, ftPath, "text/markdown; charset=utf-8",
+      progress, `S3 同步 ${e.attachmentKey}`, Math.round(((uploaded + skipped) / Math.max(1, total)) * 100),
+    );
     if (!r1.ok) err = `fulltext: ${r1.detail}`;
+    if (r1.rateLimited) consecutiveRateLimit++; else consecutiveRateLimit = 0;
 
     // 2) metadata.json
     if (!err) {
@@ -279,7 +300,14 @@ async function syncToS3Inner(): Promise<void> {
       failed.push(`${e.attachmentKey}: ${err}`);
       ledger.upsert({ attachmentKey: e.attachmentKey, status: "exported", error: err });
       report.failed.push({ key: e.attachmentKey, error: err });
+      // 连续 3 个条目都因限速失败 → 本轮终止（进度已逐条保存，稍后重跑续传）
+      if (consecutiveRateLimit >= 3) {
+        aborted = true;
+        await debugLog(`sync abort: 连续限速（429）×${consecutiveRateLimit}，建议 10-30 分钟后重跑`);
+        break;
+      }
     } else {
+      consecutiveRateLimit = 0;
       uploaded++;
       report.uploaded++;
       ledger.upsert({
@@ -325,6 +353,7 @@ async function syncToS3Inner(): Promise<void> {
 
   await ledger.persist();
   report.finishedAt = new Date().toISOString();
+  report.aborted = aborted;
   report.uploadedTotal = uploaded;
   report.skipped = skipped;
   report.indexUploaded = rIdx.ok;
@@ -335,8 +364,10 @@ async function syncToS3Inner(): Promise<void> {
     );
   } catch (_) { /* 报告写失败不影响主流程 */ }
   progress.changeLine({
-    text: `S3 同步完成：本次上传 ${uploaded}，跳过 ${skipped}，失败 ${failed.length}；索引 ${rIdx.ok ? "已更新" : "更新失败"}`,
-    type: failed.length ? "fail" : "success",
+    text: aborted
+      ? `网关持续限速，本轮中止（已上传 ${uploaded}，失败 ${failed.length}）。进度已保存，10-30 分钟后重跑即续传`
+      : `S3 同步完成：本次上传 ${uploaded}，跳过 ${skipped}，失败 ${failed.length}；索引 ${rIdx.ok ? "已更新" : "更新失败"}`,
+    type: failed.length || aborted ? "fail" : "success",
     progress: 100,
   });
   progress.startCloseTimer(10000);

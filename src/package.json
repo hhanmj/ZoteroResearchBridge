@@ -1,7 +1,7 @@
 {
   "name": "zotero-research-bridge",
   "type": "module",
-  "version": "0.2.3",
+  "version": "0.2.4",
   "description": "Zotero 文献解析与中国科技云知识同步插件",
   "config": {
     "addonName": "ZoteroResearchBridge",

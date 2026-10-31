@@ -133,7 +133,7 @@ async function zrequest(
   headers: Record<string, string>,
   body?: Uint8Array,
 ): Promise<S3Response> {
-  await pace(cfg.minIntervalMs ?? 400);
+  await pace(cfg.minIntervalMs ?? 1200);
   const opts: any = {
     headers: { ...headers },
     successCodes: false,
@@ -169,20 +169,30 @@ function withUA(cfg: S3Config, headers: Record<string, string>): Record<string, 
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
-async function withRetry(fn: () => Promise<S3Response>, tries = 6): Promise<S3Response> {
+export type RetryHook = (info: { attempt: number; status: number; waitMs: number }) => void;
+
+async function withRetry(
+  fn: () => Promise<S3Response>,
+  tries = 3,
+  onRetry?: RetryHook,
+): Promise<S3Response> {
   let last: S3Response | null = null;
   for (let i = 0; i < tries; i++) {
     const r = await fn();
     if (r.status >= 200 && r.status < 300) return r;
     last = r;
     if (r.status === 429) {
-      // 网关限速：优先尊重 Retry-After，否则指数退避（5s 起步）
+      // 网关限速：快速失败策略——只等 5s/15s 两轮，让上层中止本轮并稍后断点续传
       const ra = r.retryAfter ? parseInt(r.retryAfter, 10) * 1000 : 0;
-      await sleep(Math.max(ra, Math.min(5000 * 2 ** i, 120000)));
+      const wait = Math.max(ra, i === 0 ? 5000 : 15000);
+      onRetry?.({ attempt: i + 1, status: r.status, waitMs: wait });
+      await sleep(wait);
       continue;
     }
     if (r.status >= 500 || r.status === 0) {
-      await sleep(1000 * (i + 1));
+      const wait = 1000 * (i + 1);
+      onRetry?.({ attempt: i + 1, status: r.status, waitMs: wait });
+      await sleep(wait);
       continue;
     }
     return r; // 其余 4xx 不重试
@@ -195,16 +205,19 @@ export async function putObject(
   key: string,
   body: Uint8Array,
   contentType = "application/octet-stream",
+  onRetry?: RetryHook,
 ): Promise<S3Response> {
   const headers = sigv4Headers(cfg, "PUT", key, undefined, body, contentType);
-  return withRetry(() =>
-    zrequest(cfg, "PUT", objectUrl(cfg, key), withUA(cfg, headers), body),
+  return withRetry(
+    () => zrequest(cfg, "PUT", objectUrl(cfg, key), withUA(cfg, headers), body),
+    3,
+    onRetry,
   );
 }
 
 export async function headObject(cfg: S3Config, key: string): Promise<S3Response> {
   const headers = sigv4Headers(cfg, "HEAD", key, undefined, new Uint8Array(0));
-  return withRetry(() => zrequest(cfg, "HEAD", objectUrl(cfg, key), withUA(cfg, headers)));
+  return withRetry(() => zrequest(cfg, "HEAD", objectUrl(cfg, key), withUA(cfg, headers)), 2);
 }
 
 export async function listObjects(
