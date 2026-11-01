@@ -111,15 +111,11 @@ function extractZip(zipPath: string, destDir: string): { name: string; bytes: Ui
       if (!entry) continue;
       const is = zip.getInputStream(entryName);
       try {
-        const bytes: number[] = [];
         const bis: any = CC["@mozilla.org/binaryinputstream;1"].createInstance(CI.nsIBinaryInputStream);
         bis!.setInputStream(is);
         const sz = Number(entry.realSize || entry.size || 0);
-        if (sz > 0) {
-          const raw = bis!.readByteArray(sz);
-          bytes.push(...new Uint8Array(raw));
-        }
-        out.push({ name: safe, bytes: new Uint8Array(bytes) });
+        // 大文件（origin.pdf 可达数十 MB）不能用 spread 展开，会栈溢出
+        out.push({ name: safe, bytes: new Uint8Array(bis!.readByteArray(sz)) });
       } finally {
         is.close();
       }
@@ -157,12 +153,20 @@ async function mineruParse(
   const putUrl = j1.data.file_urls[0] as string;
 
   // 2) PUT 上传 PDF（预签名地址）
-  await Zotero.HTTP.request("PUT", putUrl, {
-    headers: { "Content-Type": "application/octet-stream" },
+  // ⚠️ 实测（2026-11-01）：该预签名 URL 的签名未包含 Content-Type，
+  //    任何 Content-Type 头都会导致 OSS 403 SignatureDoesNotMatch → 卡 waiting-file。
+  //    必须裸 PUT（无 Content-Type / Expect），并检查响应状态。
+  const up = await Zotero.HTTP.request("PUT", putUrl, {
     body: pdfBytes,
     responseType: "text",
     timeout: 600000,
+    successCodes: false,
   });
+  if (up.status < 200 || up.status >= 300) {
+    throw new Error(
+      `MinerU 文件上传失败：HTTP ${up.status} ${(up.responseText || "").slice(0, 150)}`,
+    );
+  }
 
   // 3) 轮询（10s 间隔，最长 20 分钟）
   const queryUrl = `${MINERU_BASE}/extract-results/batch/${batchId}`;

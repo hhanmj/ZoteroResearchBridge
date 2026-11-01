@@ -126,6 +126,31 @@
 
 - `images/` 里是 MinerU 输出的哈希名；复制时用内容哈希重命名（去重）+ 白名单扩展名 + 只取 `PathUtils.filename`（防 Zip Slip 类路径注入）。全库 4405 张图重命名后 1032 处引用零断链。
 
+## 六、解析引擎（OXR/MinerU API）
+
+### 26. 插件沙箱没有 FormData/Blob 全局
+
+- **现象**：`FormData is not defined`（Gecko bootstrap 上下文不注入浏览器 Web API）。
+- **解法**：手工构建 multipart 字节体（boundary + 分段 + TextEncoder 拼接），Content-Type 带上 boundary。零依赖且可控。
+- **注意**：模板字符串里的 `
+` 要写成转义序列，heredoc 转义层级会吃掉一层反斜杠——用脚本文件而非 heredoc 改代码。
+
+### 27. MinerU 预签名 PUT 不能带 Content-Type 头
+
+- **现象**：上传 403 SignatureDoesNotMatch，任务永远停在 `waiting-file`（如果上传后不检查状态，会傻等 20 分钟超时）。
+- **根因**：预签名 URL 的签名未包含 Content-Type，任何附加头都会破坏签名（curl 默认还会加 Expect 头，同样致命）。
+- **解法**：裸 PUT（无 Content-Type/Expect）+ **必须检查 PUT 响应状态**——盲传 + 不检查是双重错误叠加。
+
+### 28. `array.push(...bigArray)` 会栈溢出
+
+- **现象**：`Maximum call stack size exceeded`——解包 zip 时对十几 MB 的 origin.pdf 展开字节。
+- **解法**：分块拼接（chunks + set）或循环 push。任何对不确定大小数组的 spread 都要警惕。
+
+### 29. 开发模式：Node 测试台替代"装了才知道"
+
+- `tools/dev/` 下有 Zotero shim（HTTP/IOUtils/PathUtils/nsIZipReader/Prefs 全套）+ esbuild 打包真实 parser.ts → 在 Node 里对真实 API 跑端到端。
+- 本轮用它抓出 3 个 bug（multipart/PUT 头/栈溢出），全部在用户安装前修复。**"每个阶段真实功能测试"不等于让用户当测试员。**
+
 ## 六、工程实践
 
 ### 22. 状态机：`uploaded ≠ indexed_verified`
