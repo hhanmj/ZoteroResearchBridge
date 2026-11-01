@@ -16,3 +16,4 @@ pref("parseMaxDaily", 20);
 pref("parseConfirmed", false);
 pref("parseDailyDate", "");
 pref("parseDailyUsed", 0);
+pref("oxrBaseUrl", "https://somark.cn/api/v1");

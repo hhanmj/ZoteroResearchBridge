@@ -9,7 +9,12 @@ import * as ledger from "./ledger";
 import { md5 } from "./md5";
 
 const MINERU_BASE = "https://mineru.net/api/v4";
-const OXR_BASE = "https://somark.ai/api/v1";
+// OXR 部署分国内/国际站：国内用户 Key 来自 somark.cn，Base URL 可在设置页改
+const OXR_BASE_DEFAULT = "https://somark.cn/api/v1";
+
+function oxrBase(): string {
+  return getPref("oxrBaseUrl") || OXR_BASE_DEFAULT;
+}
 
 export type Engine = "mineru" | "oxr";
 
@@ -179,7 +184,7 @@ async function oxrParse(
   const fd = new FormData();
   fd.append("api_key", apiKey);
   fd.append("file", new Blob([pdfBytes as any]), filename);
-  const r1 = await Zotero.HTTP.request("POST", `${OXR_BASE}/parse/async`, {
+  const r1 = await Zotero.HTTP.request("POST", `${oxrBase()}/parse/async`, {
     body: fd as any,
     responseType: "text",
     timeout: 300000,
@@ -194,7 +199,7 @@ async function oxrParse(
     const fq = new FormData();
     fq.append("api_key", apiKey);
     fq.append("task_id", taskId);
-    const rq = await Zotero.HTTP.request("POST", `${OXR_BASE}/parse/async_check`, {
+    const rq = await Zotero.HTTP.request("POST", `${oxrBase()}/parse/async_check`, {
       body: fq as any,
       responseType: "text",
       timeout: 60000,
@@ -220,7 +225,38 @@ async function oxrParse(
 }
 
 // ---- 主入口 ----
+async function preflightKey(engine: Engine, key: string): Promise<{ ok: boolean; msg: string }> {
+  try {
+    if (engine === "oxr") {
+      const fd = new FormData();
+      fd.append("api_key", key);
+      const r = await Zotero.HTTP.request("POST", `${oxrBase()}/usage`, {
+        body: fd as any, responseType: "text", timeout: 30000,
+      });
+      const j = JSON.parse(r.responseText || "{}");
+      if (j.code !== 0) return { ok: false, msg: `OXR Key 无效（code=${j.code} ${j.msg || ""}）` };
+      const d = j.data || {};
+      const quota = `今日免费余 ${d.remaining_free_pages_today ?? "?"} 页 / 本月余 ${d.remaining_free_pages_this_month ?? "?"} 页`;
+      return { ok: true, msg: `OXR Key 有效（${quota}）` };
+    }
+    // mineru：空批量探测（有效="file list is empty"，过期=A0211）
+    const r = await Zotero.HTTP.request("POST", `${MINERU_BASE}/file-urls/batch`, {
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${key}` },
+      body: JSON.stringify({ files: [] }),
+      responseType: "text",
+      timeout: 30000,
+    });
+    const j = JSON.parse(r.responseText || "{}");
+    if (j.msgCode === "A0211") return { ok: false, msg: "MinerU Token 已过期，请到 API 管理页重新生成" };
+    if (j.msgCode === "A0202") return { ok: false, msg: "MinerU Token 错误" };
+    return { ok: true, msg: "MinerU Token 有效" };
+  } catch (e: any) {
+    return { ok: false, msg: `Key 预检请求失败：${e?.message || e}` };
+  }
+}
+
 export async function parseMissing(): Promise<void> {
+  await debugLog("parse: clicked");
   const d = addon.data as any;
   if (d.zrbBusy) {
     new ztoolkit.ProgressWindow(config.addonName, { closeOnClick: true })
@@ -232,22 +268,39 @@ export async function parseMissing(): Promise<void> {
   const oxrKey = getPref("oxrApiKey");
   const mineruToken = getPref("mineruToken");
   if (!engine || (engine === "oxr" && !oxrKey) || (engine === "mineru" && !mineruToken)) {
-    new ztoolkit.ProgressWindow(config.addonName, { closeOnClick: true })
-      .createLine({ text: "请先在设置页选择解析引擎并填写 API Key", type: "fail", progress: 100 })
-      .startCloseTimer(8000);
+    await debugLog(`parse abort: engine=${engine || "（空）"} oxrKey=${oxrKey ? "有" : "无"} mineruToken=${mineruToken ? "有" : "无"}`);
+    const pw0 = new ztoolkit.ProgressWindow(config.addonName, { closeOnClick: true });
+    pw0.createLine({ text: "请先在设置页选择解析引擎（下拉框）并填写对应 API Key", type: "fail", progress: 100 });
+    pw0.show();
+    pw0.startCloseTimer(15000);
     return;
   }
   // 费用护栏：首次确认
   if (!getBoolPref("parseConfirmed")) {
     const win = Zotero.getMainWindow();
-    const ok = win.confirm(
-      "即将调用付费解析 API（OXR/MinerU）。\n\n" +
-      "· 每篇 PDF 会消耗你的 API 额度\n" +
-      "· 仅解析【无本地 MinerU 缓存】的条目\n" +
-      "· 每日上限可在设置页调整（默认 20 篇）\n\n确认继续？",
-    );
-    if (!ok) return;
+    let ok = true;
+    try {
+      ok = !!(win as any).confirm(
+        "即将调用付费解析 API（OXR/MinerU）。\n\n" +
+        "· 每篇 PDF 会消耗你的 API 额度\n" +
+        "· 仅解析【无本地 MinerU 缓存】的条目\n" +
+        "· 每日上限可在设置页调整\n\n确认继续？",
+      );
+    } catch (_) { ok = true; }
+    if (!ok) {
+      await debugLog("parse: user cancelled");
+      return;
+    }
     setPref("parseConfirmed", "true");
+  }
+  const pf = await preflightKey(engine, engine === "oxr" ? oxrKey : mineruToken);
+  await debugLog(`parse preflight(${engine}): ${pf.msg}`);
+  if (!pf.ok) {
+    const pwK = new ztoolkit.ProgressWindow(config.addonName, { closeOnClick: true });
+    pwK.createLine({ text: pf.msg, type: "fail", progress: 100 });
+    pwK.show();
+    pwK.startCloseTimer(15000);
+    return;
   }
   const maxDaily = parseInt(getPref("parseMaxDaily", "20"), 10) || 20;
   const quota = dailyCheck(maxDaily);

@@ -40,12 +40,21 @@
 
   <label><html:h2>解析引擎（替代 llm-for-zotero 的 MinerU 功能）</html:h2></label>
   <hbox align="center">
-    <html:label style="width: 160px">引擎（OXR 或 MinerU）</html:label>
-    <html:input type="text" preference="parseEngine" flex="1" />
+    <html:label style="width: 160px">解析引擎（必选）</html:label>
+    <menulist preference="parseEngine" flex="1">
+      <menupopup>
+        <menuitem label="MinerU（免费 1000 页/天，超出降速不停）" value="mineru" />
+        <menuitem label="OXR / SoMark（免费 500 页/天，2000 页/月）" value="oxr" />
+      </menupopup>
+    </menulist>
   </hbox>
   <hbox align="center">
     <html:label style="width: 160px">OXR API Key（sk-…）</html:label>
     <html:input type="password" preference="oxrApiKey" flex="1" />
+  </hbox>
+  <hbox align="center">
+    <html:label style="width: 160px">OXR Base URL</html:label>
+    <html:input type="text" preference="oxrBaseUrl" flex="1" />
   </hbox>
   <hbox align="center">
     <html:label style="width: 160px">MinerU Token</html:label>

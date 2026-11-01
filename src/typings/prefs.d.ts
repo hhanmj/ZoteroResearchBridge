@@ -25,6 +25,7 @@ declare namespace _ZoteroTypes {
       "parseConfirmed": boolean;
       "parseDailyDate": string;
       "parseDailyUsed": number;
+      "oxrBaseUrl": string;
     };
   }
 }
