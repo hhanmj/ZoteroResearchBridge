@@ -9,6 +9,32 @@ import * as ledger from "./ledger";
 import { md5 } from "./md5";
 
 const MINERU_BASE = "https://mineru.net/api/v4";
+
+// 插件沙箱无 FormData 全局 → 手工构建 multipart/form-data 字节体
+function buildMultipart(
+  fields: Record<string, string>,
+  file?: { field: string; filename: string; bytes: Uint8Array; contentType?: string },
+): { body: Uint8Array; contentType: string } {
+  const boundary = "----ZRBForm" + Math.random().toString(16).slice(2);
+  const enc = new TextEncoder();
+  const parts: Uint8Array[] = [];
+  for (const [k, v] of Object.entries(fields)) {
+    parts.push(enc.encode(`--${boundary}\r\nContent-Disposition: form-data; name="${k}"\r\n\r\n${v}\r\n`));
+  }
+  if (file) {
+    parts.push(enc.encode(
+      `--${boundary}\r\nContent-Disposition: form-data; name="${file.field}"; filename="${file.filename}"\r\nContent-Type: ${file.contentType || "application/octet-stream"}\r\n\r\n`,
+    ));
+    parts.push(file.bytes);
+    parts.push(enc.encode(`\r\n`));
+  }
+  parts.push(enc.encode(`--${boundary}--\r\n`));
+  const total = parts.reduce((a, p) => a + p.length, 0);
+  const body = new Uint8Array(total);
+  let off = 0;
+  for (const p of parts) { body.set(p, off); off += p.length; }
+  return { body, contentType: `multipart/form-data; boundary=${boundary}` };
+}
 // OXR 部署分国内/国际站：国内用户 Key 来自 somark.cn，Base URL 可在设置页改
 const OXR_BASE_DEFAULT = "https://somark.cn/api/v1";
 
@@ -181,11 +207,11 @@ async function oxrParse(
   apiKey: string, pdfBytes: Uint8Array, filename: string,
   progress: { changeLine: (o: any) => void },
 ): Promise<{ md: string; images: { name: string; bytes: Uint8Array }[] }> {
-  const fd = new FormData();
-  fd.append("api_key", apiKey);
-  fd.append("file", new Blob([pdfBytes as any]), filename);
+  const mp = buildMultipart({ api_key: apiKey }, {
+    field: "file", filename, bytes: pdfBytes, contentType: "application/pdf",
+  });
   const r1 = await Zotero.HTTP.request("POST", `${oxrBase()}/parse/async`, {
-    body: fd as any,
+    body: mp.body, headers: { "Content-Type": mp.contentType },
     responseType: "text",
     timeout: 300000,
   });
@@ -228,10 +254,10 @@ async function oxrParse(
 async function preflightKey(engine: Engine, key: string): Promise<{ ok: boolean; msg: string }> {
   try {
     if (engine === "oxr") {
-      const fd = new FormData();
-      fd.append("api_key", key);
+      const mp = buildMultipart({ api_key: key });
       const r = await Zotero.HTTP.request("POST", `${oxrBase()}/usage`, {
-        body: fd as any, responseType: "text", timeout: 30000,
+        body: mp.body, headers: { "Content-Type": mp.contentType },
+        responseType: "text", timeout: 30000,
       });
       const j = JSON.parse(r.responseText || "{}");
       if (j.code !== 0) return { ok: false, msg: `OXR Key 无效（code=${j.code} ${j.msg || ""}）` };
