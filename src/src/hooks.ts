@@ -1,5 +1,6 @@
 import { getString, initLocale } from "./utils/locale";
 import * as bridge from "./modules/bridge";
+import { autoBackup } from "./modules/sync";
 import { registerPrefs } from "./modules/prefs";
 import { createZToolkit } from "./utils/ztoolkit";
 
@@ -21,6 +22,11 @@ async function onStartup() {
   );
 
   addon.data.initialized = true;
+
+  // 启动 60s 后做一次自动备份（补齐关机期间的新增/变更）
+  setTimeout(() => {
+    autoBackup().catch((e) => Zotero.logError(e));
+  }, 60000);
 }
 
 async function onMainWindowLoad(win: _ZoteroTypes.MainWindow): Promise<void> {

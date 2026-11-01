@@ -433,3 +433,33 @@ export async function syncFigures(): Promise<void> {
     d.zrbBusy = false;
   }
 }
+
+// 自动备份管线：条目新增/变更/启动时 → 导出缺失 → S3 增量同步
+// 注意：解析不进自动链（涉及 API 费用，必须手动触发）
+export async function autoBackup(): Promise<void> {
+  const d = addon.data as any;
+  if (d.zrbBusy) return; // 已有任务在跑，静默跳过（下次变更再试）
+  const getB = (n: string): boolean => {
+    try {
+      return (Zotero.Prefs.get(`extensions.zotero.${config.addonRef}.${n}`, true) as boolean) === true;
+    } catch (_) { return false; }
+  };
+  if (!getB("autoSync")) return;
+  d.zrbBusy = true;
+  const progress = new ztoolkit.ProgressWindow(config.addonName, { closeOnClick: false })
+    .createLine({ text: "ZRB 自动备份", type: "default", progress: 0 })
+    .show();
+  try {
+    const { exportAllMissing } = await import("./exporter");
+    await exportAllMissing();
+    await syncToS3();
+    progress.changeLine({ text: "自动备份完成", type: "success", progress: 100 });
+    progress.startCloseTimer(5000);
+  } catch (e: any) {
+    await debugLog(`autoBackup FATAL: ${e?.message || e}`);
+    progress.changeLine({ text: `自动备份异常：${String(e?.message || e).slice(0, 120)}`, type: "fail", progress: 100 });
+    progress.startCloseTimer(10000);
+  } finally {
+    d.zrbBusy = false;
+  }
+}

@@ -7,7 +7,7 @@ pref("s3Secret", "");
 pref("s3SecretFile", "");
 pref("uaApp", "S3Drive");
 pref("verifyUpload", true);
-pref("autoSync", false);
+pref("autoSync", true);
 pref("figuresSync", false);
 pref("parseEngine", "");
 pref("oxrApiKey", "");

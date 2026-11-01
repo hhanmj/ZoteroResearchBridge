@@ -3,6 +3,7 @@
 import * as exporter from "./exporter";
 import * as sync from "./sync";
 import * as parser from "./parser";
+import { autoBackup } from "./sync";
 import * as ledger from "./ledger";
 
 export function registerMenu(): void {
@@ -85,7 +86,10 @@ function scheduleFlush(): void {
         });
         changed++;
       }
-      if (changed) await ledger.persist();
+      if (changed) {
+        await ledger.persist();
+        await autoBackup(); // 自动备份开启时：导出缺失 + S3 增量同步
+      }
     } catch (err) {
       Zotero.logError(new Error(`[zrb] notify flush: ${err}`));
     }
