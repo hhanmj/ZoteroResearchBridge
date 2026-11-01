@@ -226,11 +226,9 @@ async function oxrParse(
 
   for (let i = 0; i < 120; i++) {
     await sleep(10000);
-    const fq = new FormData();
-    fq.append("api_key", apiKey);
-    fq.append("task_id", taskId);
+    const fq = buildMultipart({ api_key: apiKey, task_id: taskId });
     const rq = await Zotero.HTTP.request("POST", `${oxrBase()}/parse/async_check`, {
-      body: fq as any,
+      body: fq.body, headers: { "Content-Type": fq.contentType },
       responseType: "text",
       timeout: 60000,
     });
