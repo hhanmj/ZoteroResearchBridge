@@ -19,9 +19,12 @@ declare namespace _ZoteroTypes {
       "autoSync": boolean;
       "figuresSync": boolean;
       "parseEngine": string;
+      "parseEngineOrder": string;
       "oxrApiKey": string;
       "mineruToken": string;
-      "parseMaxDaily": number;
+      "oxrSite": string;
+      "parseMaxDaily": string;
+      "allowPaidQuota": boolean;
       "parseConfirmed": boolean;
       "parseDailyDate": string;
       "parseDailyUsed": number;

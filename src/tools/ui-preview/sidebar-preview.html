@@ -1,0 +1,2174 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ZoteroResearchBridge (ZRB) · 侧栏与设置 UI 预览</title>
+  <style>
+    /* 外围预览容器样式，不影响内部隔离 */
+    body {
+      margin: 0;
+      padding: 0;
+      background: #0f172a;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+      color: #e2e8f0;
+      min-height: 100vh;
+    }
+    .preview-navbar {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 12px;
+      padding: 10px 20px;
+      background: #1e293b;
+      border-bottom: 1px solid #334155;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.25);
+    }
+    .preview-title {
+      font-size: 14px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .preview-title span {
+      font-size: 11px;
+      color: #94a3b8;
+      font-weight: normal;
+    }
+    .preview-controls {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .preview-btn {
+      padding: 5px 12px;
+      font-size: 12px;
+      font-weight: 500;
+      border-radius: 6px;
+      border: 1px solid #475569;
+      background: #334155;
+      color: #f1f5f9;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+    .preview-btn:hover {
+      background: #475569;
+      border-color: #64748b;
+    }
+    .preview-btn.active {
+      background: #2563eb;
+      border-color: #3b82f6;
+      color: #ffffff;
+    }
+    .preview-stage {
+      padding: 24px 20px;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      gap: 24px;
+      overflow-x: auto;
+    }
+    .preview-column {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      flex-shrink: 0;
+    }
+    .preview-col-header {
+      font-size: 12px;
+      color: #94a3b8;
+      font-weight: 500;
+      display: flex;
+      justify-content: space-between;
+      padding: 0 4px;
+    }
+    .preview-device {
+      border: 1px solid #334155;
+      border-radius: 8px;
+      background: var(--zrb-bg, #f8fafc);
+      box-shadow: 0 8px 24px rgba(0,0,0,0.3);
+      resize: horizontal;
+      overflow: auto;
+    }
+
+    /* 独立设置容器模拟 */
+    .preview-settings-window {
+      width: 680px;
+      height: 700px;
+      border: 1px solid #334155;
+      border-radius: 8px;
+      background: var(--bg, #f8fafc);
+      box-shadow: 0 8px 24px rgba(0,0,0,0.3);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* 内嵌 dashboard.css */
+/* ZRB 侧栏工作台样式表
+   适用环境：Zotero 7+ (Firefox 115+ ESR)
+   设计规范：完全作用域隔离、无视口媒体查询、流式自适应 (260px-600px)
+*/
+
+:root {
+  color-scheme: light dark;
+  --zrb-bg: #f8fafc;
+  --zrb-surface: #ffffff;
+  --zrb-text: #1e293b;
+  --zrb-text-strong: #0f172a;
+  --zrb-muted: #64748b;
+  --zrb-muted-light: #94a3b8;
+  --zrb-border: #e2e8f0;
+  --zrb-border-hover: #cbd5e1;
+
+  --zrb-blue: #2563eb;
+  --zrb-blue-hover: #1d4ed8;
+  --zrb-blue-soft: #eff6ff;
+  --zrb-blue-border: #bfdbfe;
+
+  --zrb-green: #059669;
+  --zrb-green-soft: #ecfdf5;
+  --zrb-green-border: #a7f3d0;
+
+  --zrb-amber: #d97706;
+  --zrb-amber-soft: #fffbeb;
+  --zrb-amber-border: #fde68a;
+
+  --zrb-red: #dc2626;
+  --zrb-red-soft: #fef2f2;
+  --zrb-red-border: #fecaca;
+
+  --zrb-shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.04);
+  --zrb-shadow: 0 1px 3px rgba(15, 23, 42, 0.06), 0 1px 2px rgba(15, 23, 42, 0.04);
+  --zrb-radius-sm: 4px;
+  --zrb-radius: 6px;
+  --zrb-radius-md: 8px;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --zrb-bg: #181b20;
+    --zrb-surface: #22262c;
+    --zrb-text: #e2e8f0;
+    --zrb-text-strong: #f8fafc;
+    --zrb-muted: #94a3b8;
+    --zrb-muted-light: #64748b;
+    --zrb-border: #333942;
+    --zrb-border-hover: #47515e;
+
+    --zrb-blue: #3b82f6;
+    --zrb-blue-hover: #60a5fa;
+    --zrb-blue-soft: #1e293b;
+    --zrb-blue-border: #1e3a8a;
+
+    --zrb-green: #34d399;
+    --zrb-green-soft: #064e3b;
+    --zrb-green-border: #065f46;
+
+    --zrb-amber: #fbbf24;
+    --zrb-amber-soft: #451a03;
+    --zrb-amber-border: #78350f;
+
+    --zrb-red: #f87171;
+    --zrb-red-soft: #450a0a;
+    --zrb-red-border: #7f1d1d;
+
+    --zrb-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.2);
+    --zrb-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
+  }
+}
+
+/* 作用域根容器 */
+.zrb-sidebar-body {
+  width: 100%;
+  min-width: 0;
+  overflow: visible;
+}
+
+.zrb-sidebar-app {
+  width: 100%;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  background: var(--zrb-bg);
+  color: var(--zrb-text);
+  font: 13px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+  container-type: inline-size;
+  container-name: zrb-root;
+  -moz-user-select: text;
+  user-select: text;
+}
+
+.zrb-sidebar-app,
+.zrb-sidebar-app *,
+.zrb-sidebar-app *::before,
+.zrb-sidebar-app *::after {
+  box-sizing: border-box;
+}
+
+.zrb-sidebar-app button,
+.zrb-sidebar-app input,
+.zrb-sidebar-app select {
+  font: inherit;
+  min-width: 0;
+}
+
+/* ---- 头部 Header ---- */
+.zrb-sidebar-app #zrb-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 9px 12px;
+  border-bottom: 1px solid var(--zrb-border);
+  background: var(--zrb-surface);
+  min-width: 0;
+}
+
+.zrb-sidebar-app .zrb-brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.zrb-sidebar-app .zrb-logo {
+  flex: 0 0 28px;
+  width: 28px;
+  height: 28px;
+  display: block;
+}
+
+.zrb-sidebar-app .zrb-brand > div {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.zrb-sidebar-app .zrb-title {
+  font-size: 15px;
+  font-weight: 650;
+  color: var(--zrb-text-strong);
+  line-height: 1.3;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.zrb-sidebar-app .zrb-subtitle {
+  font-size: 11px;
+  color: var(--zrb-muted);
+  line-height: 1.35;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.zrb-sidebar-app .zrb-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex: 0 0 auto;
+}
+
+/* 通用按钮 */
+.zrb-sidebar-app .zrb-button {
+  border: 1px solid transparent;
+  border-radius: var(--zrb-radius);
+  color: var(--zrb-text);
+  background: transparent;
+  font-size: 12px;
+  font-weight: 500;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  min-height: 26px;
+}
+
+.zrb-sidebar-app .zrb-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.zrb-sidebar-app .zrb-button.zrb-icon {
+  width: 28px;
+  height: 28px;
+  min-width: 28px;
+  min-height: 28px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--zrb-muted);
+  font-size: 14px;
+  line-height: 1;
+}
+
+.zrb-sidebar-app .zrb-button.zrb-icon:hover:not(:disabled) {
+  background: var(--zrb-bg);
+  color: var(--zrb-text-strong);
+  border-color: var(--zrb-border);
+}
+
+.zrb-sidebar-app .zrb-primary {
+  color: #ffffff;
+  background: var(--zrb-blue);
+  border-color: var(--zrb-blue);
+  box-shadow: var(--zrb-shadow-sm);
+}
+
+.zrb-sidebar-app .zrb-primary:hover:not(:disabled) {
+  background: var(--zrb-blue-hover);
+  border-color: var(--zrb-blue-hover);
+}
+
+.zrb-sidebar-app .zrb-secondary {
+  background: var(--zrb-surface);
+  border-color: var(--zrb-border);
+  color: var(--zrb-text);
+  font-size: 12px;
+  padding: 4px 10px;
+}
+
+.zrb-sidebar-app .zrb-secondary:hover:not(:disabled) {
+  border-color: var(--zrb-border-hover);
+  background: var(--zrb-bg);
+}
+
+/* ---- 主体 Main ---- */
+.zrb-sidebar-app main {
+  padding: 11px 12px 14px;
+  min-width: 0;
+}
+
+/* 简介与操作栏 */
+.zrb-sidebar-app .zrb-intro {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 12px;
+  min-width: 0;
+}
+
+.zrb-sidebar-app .zrb-intro > div {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.zrb-sidebar-app .zrb-intro h1 {
+  font-size: 16px;
+  font-weight: 650;
+  color: var(--zrb-text-strong);
+  margin: 0;
+  line-height: 1.35;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.zrb-sidebar-app .zrb-intro p {
+  color: var(--zrb-muted);
+  font-size: 12px;
+  margin: 2px 0 0;
+  line-height: 1.4;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.zrb-sidebar-app #zrb-parse {
+  flex: 0 0 auto;
+  font-size: 12px;
+  font-weight: 550;
+  padding: 5px 12px;
+  min-height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ---- 统计卡片：2x2 网格，宽侧栏(>=440px)切换 4 列 ---- */
+.zrb-sidebar-app .zrb-stats {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+@container zrb-root (min-width: 440px) {
+  .zrb-sidebar-app .zrb-stats {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+.zrb-sidebar-app .zrb-stat {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  text-align: left;
+  background: var(--zrb-surface);
+  color: var(--zrb-text);
+  border: 1px solid var(--zrb-border);
+  border-radius: var(--zrb-radius-md);
+  padding: 10px 10px;
+  box-shadow: var(--zrb-shadow-sm);
+  min-width: 0;
+  overflow: hidden;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.zrb-sidebar-app .zrb-stat:hover {
+  border-color: var(--zrb-border-hover);
+  box-shadow: var(--zrb-shadow);
+  transform: translateY(-1px);
+}
+
+.zrb-sidebar-app .zrb-stat:active {
+  transform: translateY(0);
+}
+
+.zrb-sidebar-app .zrb-stat-label {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--zrb-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.3;
+}
+
+.zrb-sidebar-app .zrb-stat-value {
+  font-size: 24px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.2;
+  margin: 3px 0 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--zrb-text-strong);
+}
+
+.zrb-sidebar-app .zrb-stat-note {
+  font-size: 11px;
+  color: var(--zrb-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  line-height: 1.35;
+}
+
+.zrb-sidebar-app .zrb-stat-parsed .zrb-stat-value {
+  color: var(--zrb-green);
+}
+
+.zrb-sidebar-app .zrb-stat-synced .zrb-stat-value {
+  color: var(--zrb-blue);
+}
+
+.zrb-sidebar-app .zrb-stat-pending .zrb-stat-value {
+  color: var(--zrb-amber);
+}
+
+/* ---- 流程管道条 Pipeline ---- */
+.zrb-sidebar-app .zrb-pipeline {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 12px;
+  margin-bottom: 12px;
+  background: var(--zrb-surface);
+  border: 1px solid var(--zrb-border);
+  border-radius: var(--zrb-radius-md);
+  box-shadow: var(--zrb-shadow-sm);
+}
+
+.zrb-sidebar-app .zrb-pipeline-step {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+}
+
+.zrb-sidebar-app .zrb-pipeline-step > div {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 6px;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.zrb-sidebar-app .zrb-pipeline-step strong {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--zrb-text-strong);
+  white-space: nowrap;
+  flex: 0 0 auto;
+}
+
+.zrb-sidebar-app .zrb-pipeline-step div span {
+  color: var(--zrb-muted);
+  font-size: 11px;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1 1 auto;
+  text-align: right;
+}
+
+.zrb-sidebar-app .zrb-step-icon {
+  flex: 0 0 18px;
+  width: 18px;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: var(--zrb-bg);
+  border: 1px solid var(--zrb-border);
+  color: var(--zrb-muted);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.zrb-sidebar-app .zrb-step-green {
+  background: var(--zrb-green-soft);
+  color: var(--zrb-green);
+  border-color: var(--zrb-green-border);
+}
+
+.zrb-sidebar-app .zrb-step-blue {
+  background: var(--zrb-blue-soft);
+  color: var(--zrb-blue);
+  border-color: var(--zrb-blue-border);
+}
+
+.zrb-sidebar-app .zrb-pipeline-line {
+  height: 3px;
+  margin-left: 25px;
+  background: var(--zrb-bg);
+  border: 1px solid var(--zrb-border);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.zrb-sidebar-app .zrb-pipeline-line div {
+  height: 100%;
+  width: 0;
+  border-radius: 2px;
+  transition: width 0.3s ease;
+}
+
+.zrb-sidebar-app #zrb-flow-parse {
+  background: var(--zrb-green);
+}
+
+.zrb-sidebar-app #zrb-flow-sync {
+  background: var(--zrb-blue);
+}
+
+/* ---- 任务进度 Task ---- */
+.zrb-sidebar-app .zrb-task {
+  background: var(--zrb-blue-soft);
+  border: 1px solid var(--zrb-blue-border);
+  border-radius: var(--zrb-radius-md);
+  padding: 10px 12px;
+  margin-bottom: 12px;
+}
+
+.zrb-sidebar-app .zrb-task[hidden] {
+  display: none !important;
+}
+
+.zrb-sidebar-app .zrb-task-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 12px;
+}
+
+.zrb-sidebar-app .zrb-task-head > div {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.zrb-sidebar-app .zrb-task-head strong {
+  font-weight: 600;
+  color: var(--zrb-text-strong);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.zrb-sidebar-app #zrb-task-percent {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--zrb-blue);
+  flex: 0 0 auto;
+}
+
+.zrb-sidebar-app .zrb-task-detail {
+  color: var(--zrb-muted);
+  font-size: 11px;
+  margin: 4px 0 6px;
+  overflow-wrap: anywhere;
+  word-break: break-all;
+  line-height: 1.4;
+}
+
+.zrb-sidebar-app .zrb-task progress {
+  display: block;
+  width: 100%;
+  height: 4px;
+  appearance: none;
+  -moz-appearance: none;
+  border: none;
+  border-radius: 2px;
+  background: var(--zrb-bg);
+  overflow: hidden;
+}
+
+.zrb-sidebar-app .zrb-task progress::-moz-progress-bar {
+  background: var(--zrb-blue);
+  border-radius: 2px;
+}
+
+.zrb-sidebar-app .zrb-spinner {
+  flex: 0 0 12px;
+  width: 12px;
+  height: 12px;
+  border: 2px solid var(--zrb-blue-border);
+  border-top-color: var(--zrb-blue);
+  border-radius: 50%;
+  animation: zrb-spin 0.8s linear infinite;
+}
+
+.zrb-sidebar-app .zrb-spinner.zrb-done {
+  border: 0;
+  border-radius: 0;
+  width: auto;
+  height: auto;
+  animation: none;
+  color: var(--zrb-green);
+  font-size: 12px;
+  font-weight: bold;
+}
+
+@keyframes zrb-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* ---- 文献工作区 Workspace ---- */
+.zrb-sidebar-app .zrb-workspace {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  background: var(--zrb-surface);
+  border: 1px solid var(--zrb-border);
+  border-radius: var(--zrb-radius-md);
+  box-shadow: var(--zrb-shadow-sm);
+  overflow: hidden;
+}
+
+.zrb-sidebar-app .zrb-list-area {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+/* 工具栏 Toolbar */
+.zrb-sidebar-app .zrb-toolbar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 10px 10px 8px;
+}
+
+.zrb-sidebar-app #zrb-search {
+  flex: 1 1 110px;
+  min-width: 0;
+  height: 30px;
+  padding: 4px 9px;
+  font-size: 12px;
+  color: var(--zrb-text);
+  background: var(--zrb-bg);
+  border: 1px solid var(--zrb-border);
+  border-radius: var(--zrb-radius);
+  outline: none;
+  transition: all 0.15s ease;
+}
+
+.zrb-sidebar-app #zrb-search:focus {
+  border-color: var(--zrb-blue);
+  background: var(--zrb-surface);
+  box-shadow: 0 0 0 2px var(--zrb-blue-soft);
+}
+
+.zrb-sidebar-app #zrb-sort {
+  flex: 0 0 auto;
+  max-width: 100%;
+  height: 30px;
+  color: var(--zrb-muted);
+  background: var(--zrb-bg);
+  border: 1px solid var(--zrb-border);
+  border-radius: var(--zrb-radius);
+  padding: 0 8px;
+  font-size: 12px;
+  outline: none;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.zrb-sidebar-app #zrb-sort:focus {
+  border-color: var(--zrb-blue);
+}
+
+/* 筛选 Tab 栏 */
+.zrb-sidebar-app .zrb-filter-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 0 8px 8px;
+}
+
+.zrb-sidebar-app .zrb-nav-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--zrb-muted);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--zrb-radius-sm);
+  padding: 4px 8px;
+  font-size: 12px;
+  white-space: nowrap;
+  min-height: 26px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.zrb-sidebar-app .zrb-nav-item:hover {
+  background: var(--zrb-bg);
+  color: var(--zrb-text-strong);
+}
+
+.zrb-sidebar-app .zrb-nav-item.zrb-active {
+  color: var(--zrb-blue);
+  background: var(--zrb-blue-soft);
+  font-weight: 600;
+}
+
+.zrb-sidebar-app .zrb-nav-item b {
+  font-size: 11px;
+  font-weight: 550;
+  padding: 1px 5px;
+  border-radius: 8px;
+  background: rgba(15, 23, 42, 0.06);
+  line-height: 1.25;
+}
+
+@media (prefers-color-scheme: dark) {
+  .zrb-sidebar-app .zrb-nav-item b {
+    background: rgba(255, 255, 255, 0.1);
+  }
+}
+
+/* 列表表头 */
+.zrb-sidebar-app .zrb-list-heading {
+  display: flex;
+  gap: 6px;
+  align-items: baseline;
+  justify-content: space-between;
+  padding: 4px 10px 6px;
+  min-width: 0;
+  border-bottom: 1px solid var(--zrb-border);
+}
+
+.zrb-sidebar-app .zrb-list-heading strong {
+  font-size: 12.5px;
+  font-weight: 650;
+  color: var(--zrb-text-strong);
+  white-space: nowrap;
+}
+
+.zrb-sidebar-app .zrb-list-heading span {
+  color: var(--zrb-muted);
+  font-size: 11px;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 列表内容区 */
+.zrb-sidebar-app .zrb-items {
+  max-height: 440px;
+  overflow-y: auto;
+  min-width: 0;
+}
+
+/* 列表单项 Item */
+.zrb-sidebar-app .zrb-item {
+  display: grid;
+  grid-template-columns: minmax(0, auto) minmax(0, auto) 1fr auto;
+  gap: 6px 8px;
+  align-items: center;
+  padding: 10px 10px;
+  border-bottom: 1px solid var(--zrb-border);
+  cursor: pointer;
+  min-width: 0;
+  transition: background 0.15s ease;
+}
+
+.zrb-sidebar-app .zrb-item:last-child {
+  border-bottom: 0;
+}
+
+.zrb-sidebar-app .zrb-item:hover {
+  background: var(--zrb-bg);
+}
+
+.zrb-sidebar-app .zrb-item.zrb-selected {
+  background: var(--zrb-blue-soft);
+}
+
+.zrb-sidebar-app .zrb-paper-info {
+  grid-column: 1 / -1;
+  min-width: 0;
+}
+
+.zrb-sidebar-app .zrb-paper-title {
+  font-size: 13px;
+  font-weight: 550;
+  color: var(--zrb-text-strong);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  line-height: 1.4;
+}
+
+.zrb-sidebar-app .zrb-paper-meta {
+  margin-top: 2px;
+  color: var(--zrb-muted);
+  font-size: 11px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.4;
+}
+
+/* 状态徽章 */
+.zrb-sidebar-app .zrb-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 8px;
+  border-radius: var(--zrb-radius-sm);
+  font-size: 11px;
+  font-weight: 500;
+  white-space: nowrap;
+  min-width: 0;
+  max-width: 150px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.35;
+}
+
+.zrb-sidebar-app .zrb-status::before {
+  content: "";
+  flex: 0 0 5px;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.zrb-sidebar-app .zrb-status-ok {
+  color: var(--zrb-green);
+  background: var(--zrb-green-soft);
+}
+
+.zrb-sidebar-app .zrb-status-info {
+  color: var(--zrb-blue);
+  background: var(--zrb-blue-soft);
+}
+
+.zrb-sidebar-app .zrb-status-wait {
+  color: var(--zrb-amber);
+  background: var(--zrb-amber-soft);
+}
+
+.zrb-sidebar-app .zrb-status-error {
+  color: var(--zrb-red);
+  background: var(--zrb-red-soft);
+}
+
+.zrb-sidebar-app .zrb-status-neutral {
+  color: var(--zrb-muted);
+  background: var(--zrb-bg);
+}
+
+/* 跳转与操作按钮 */
+.zrb-sidebar-app .zrb-locate {
+  grid-column: 4 / 5;
+  justify-self: end;
+  flex-shrink: 0;
+  width: 24px;
+  height: 24px;
+  min-width: 24px;
+  min-height: 24px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--zrb-muted);
+  font-size: 13px;
+  border-radius: var(--zrb-radius-sm);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.zrb-sidebar-app .zrb-locate:hover {
+  color: var(--zrb-blue);
+  background: var(--zrb-blue-soft);
+  border-color: var(--zrb-blue-border);
+}
+
+/* 错误明细 */
+.zrb-sidebar-app .zrb-error-detail {
+  grid-column: 1 / -1;
+  color: var(--zrb-red);
+  background: var(--zrb-red-soft);
+  border: 1px solid var(--zrb-red-border);
+  border-radius: var(--zrb-radius-sm);
+  padding: 6px 8px;
+  font-size: 11px;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+  word-break: break-all;
+  margin-top: 3px;
+  min-width: 0;
+}
+
+/* 空状态 */
+.zrb-sidebar-app .zrb-empty {
+  padding: 30px 12px;
+  text-align: center;
+  color: var(--zrb-muted);
+}
+
+.zrb-sidebar-app .zrb-empty strong {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  margin-bottom: 3px;
+  color: var(--zrb-text-strong);
+}
+
+.zrb-sidebar-app .zrb-empty p {
+  font-size: 11.5px;
+  margin: 0;
+  line-height: 1.4;
+}
+
+/* 底栏 Footer Bar */
+.zrb-sidebar-app .zrb-footer-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  border-top: 1px solid var(--zrb-border);
+  padding: 8px 10px;
+  background: var(--zrb-surface);
+  min-width: 0;
+}
+
+.zrb-sidebar-app #zrb-footer-text {
+  display: block;
+  font-size: 11px;
+  color: var(--zrb-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.zrb-sidebar-app .zrb-footer-bar > div {
+  display: flex;
+  gap: 5px;
+  flex: 0 0 auto;
+}
+
+
+    /* 内嵌 settings.css */
+:root {
+  color-scheme: light dark;
+  --bg: #f8fafc;
+  --surface: #ffffff;
+  --text: #1e293b;
+  --text-strong: #0f172a;
+  --muted: #64748b;
+  --muted-light: #94a3b8;
+  --border: #e2e8f0;
+  --border-hover: #cbd5e1;
+
+  --blue: #2563eb;
+  --blue-hover: #1d4ed8;
+  --blue-soft: #eff6ff;
+  --blue-border: #bfdbfe;
+
+  --green: #059669;
+  --green-soft: #ecfdf5;
+  --green-border: #a7f3d0;
+
+  --amber: #d97706;
+  --amber-soft: #fffbeb;
+
+  --red: #dc2626;
+  --red-soft: #fef2f2;
+  --red-border: #fecaca;
+
+  --shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.04);
+  --shadow: 0 1px 3px rgba(15, 23, 42, 0.06), 0 1px 2px rgba(15, 23, 42, 0.04);
+  --radius-sm: 4px;
+  --radius: 6px;
+  --radius-md: 8px;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #181b20;
+    --surface: #22262c;
+    --text: #e2e8f0;
+    --text-strong: #f8fafc;
+    --muted: #94a3b8;
+    --muted-light: #64748b;
+    --border: #333942;
+    --border-hover: #47515e;
+
+    --blue: #3b82f6;
+    --blue-hover: #60a5fa;
+    --blue-soft: #1e293b;
+    --blue-border: #1e3a8a;
+
+    --green: #34d399;
+    --green-soft: #064e3b;
+    --green-border: #065f46;
+
+    --amber: #fbbf24;
+    --amber-soft: #451a03;
+
+    --red: #f87171;
+    --red-soft: #450a0a;
+    --red-border: #7f1d1d;
+
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.2);
+    --shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
+  }
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#zrb-settings-window,
+.settings-app {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  color: var(--text);
+  background: var(--bg);
+}
+
+.settings-app {
+  display: flex;
+  flex-direction: column;
+  font: 13px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+  color: var(--text);
+  min-width: 0;
+}
+
+/* ---- 头部 Header ---- */
+header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 24px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  min-width: 0;
+}
+
+header > div {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+h1 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 650;
+  color: var(--text-strong);
+  line-height: 1.25;
+}
+
+header p {
+  color: var(--muted);
+  margin: 3px 0 0;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.settings-badge {
+  padding: 3px 8px;
+  border-radius: var(--radius-sm);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--muted);
+  font-size: 11.5px;
+  font-weight: 500;
+  white-space: nowrap;
+  flex: 0 0 auto;
+}
+
+/* ---- 主体表单区域 ---- */
+main {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 18px 24px;
+  min-width: 0;
+}
+
+section {
+  padding: 16px 18px;
+  margin-bottom: 14px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
+  min-width: 0;
+}
+
+h2 {
+  font-size: 14px;
+  font-weight: 650;
+  color: var(--text-strong);
+  margin: 0 0 5px;
+  line-height: 1.35;
+}
+
+/* 引擎卡片：MinerU / OXR 各自独立配置与测试 */
+.settings-engine-card {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 12px 14px;
+  margin: 12px 0;
+  background: var(--bg);
+  min-width: 0;
+}
+
+.settings-engine-card h3 {
+  margin: 0 0 4px;
+  font-size: 13px;
+  font-weight: 650;
+  color: var(--text-strong);
+}
+
+.settings-engine-card label {
+  margin: 8px 0;
+}
+
+.settings-help {
+  color: var(--muted);
+  font-size: 11.5px;
+  line-height: 1.45;
+  margin: 0 0 12px;
+}
+
+label {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  margin: 10px 0;
+  font-size: 12.5px;
+  font-weight: 550;
+  color: var(--text);
+  min-width: 0;
+}
+
+input:not([type="checkbox"]),
+select {
+  width: 100%;
+  height: 32px;
+  padding: 5px 10px;
+  color: var(--text);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  font: inherit;
+  font-size: 13px;
+  outline: none;
+  transition: all 0.15s ease;
+}
+
+input:not([type="checkbox"]):focus,
+select:focus {
+  border-color: var(--blue);
+  background: var(--surface);
+  box-shadow: 0 0 0 2px var(--blue-soft);
+}
+
+input::placeholder {
+  color: var(--muted-light);
+}
+
+.settings-inline {
+  display: flex;
+  align-items: flex-end;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.settings-inline > label {
+  flex: 1 1 180px;
+  margin: 8px 0;
+  min-width: 0;
+}
+
+.settings-check {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  font-weight: 400;
+  font-size: 12.5px;
+  margin: 10px 0;
+  cursor: pointer;
+  color: var(--text);
+  user-select: none;
+}
+
+.settings-check input {
+  width: 16px;
+  height: 16px;
+  min-width: 16px;
+  min-height: 16px;
+  margin: 0;
+  accent-color: var(--blue);
+  cursor: pointer;
+}
+
+.settings-message {
+  min-height: 18px;
+  color: var(--blue);
+  font-size: 12px;
+  margin: 8px 0 0;
+}
+
+/* 测试连接行 */
+.settings-test {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 10px 0 4px;
+  min-width: 0;
+}
+
+.settings-test-result {
+  font-size: 11.5px;
+  color: var(--muted);
+  min-width: 0;
+  flex: 1 1 auto;
+  overflow-wrap: anywhere;
+  word-break: break-all;
+  line-height: 1.4;
+}
+
+.settings-test-result[data-state="busy"] {
+  color: var(--blue);
+}
+
+.settings-test-result[data-state="ok"] {
+  color: var(--green);
+  font-weight: 550;
+}
+
+.settings-test-result[data-state="fail"] {
+  color: var(--red);
+  font-weight: 500;
+}
+
+/* ---- 底部 Footer ---- */
+footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 24px;
+  border-top: 1px solid var(--border);
+  background: var(--surface);
+  min-width: 0;
+}
+
+footer > span {
+  font-size: 11.5px;
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+footer div {
+  display: flex;
+  gap: 8px;
+  flex: 0 0 auto;
+}
+
+button {
+  min-height: 32px;
+  padding: 5px 14px;
+  border-radius: var(--radius);
+  border: 1px solid transparent;
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.settings-primary {
+  color: #ffffff;
+  background: var(--blue);
+  border-color: var(--blue);
+  box-shadow: var(--shadow-sm);
+}
+
+.settings-primary:hover:not(:disabled) {
+  background: var(--blue-hover);
+  border-color: var(--blue-hover);
+}
+
+.settings-secondary {
+  background: var(--surface);
+  border-color: var(--border);
+  color: var(--text);
+}
+
+.settings-secondary:hover:not(:disabled) {
+  border-color: var(--border-hover);
+  background: var(--bg);
+}
+
+  </style>
+</head>
+<body>
+  <div class="preview-navbar">
+    <div class="preview-title">
+      <strong>ZRB 侧栏工作台与设置 UI 预览</strong>
+      <span>基准字号 13px · 统计数值 24px · 最小字号 11px</span>
+    </div>
+    <div class="preview-controls">
+      <button class="preview-btn active" onclick="setViewMode('all')">全视口对比 (260/300/360/500px)</button>
+      <button class="preview-btn" onclick="setViewMode('260')">极窄 260px</button>
+      <button class="preview-btn" onclick="setViewMode('300')">典型 300px (无裁切)</button>
+      <button class="preview-btn" onclick="setViewMode('360')">标准 360px</button>
+      <button class="preview-btn" onclick="setViewMode('500')">宽屏 500px (4列)</button>
+      <button class="preview-btn" onclick="setViewMode('settings')">⚙ 设置窗口预览</button>
+      <button class="preview-btn" onclick="toggleTheme()">🌓 切换亮色/深色主题</button>
+    </div>
+  </div>
+
+  <div class="preview-stage" id="stage">
+    <!-- 260px 极窄视口 -->
+    <div class="preview-column" id="col-260">
+      <div class="preview-col-header">
+        <span>极窄侧栏 (260px)</span>
+        <span>最小安全宽度</span>
+      </div>
+      <div class="preview-device zrb-sidebar-body" style="width: 260px;">
+        <div id="zrb-app" class="zrb-sidebar-app">
+  <header id="zrb-header">
+    <div class="zrb-brand">
+      <svg class="zrb-logo" viewBox="0 0 96 96" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><defs><linearGradient id="zrb-logo-g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#3f8fe0"/><stop offset="1" stop-color="#1f5fa8"/></linearGradient></defs><rect x="4" y="4" width="88" height="88" rx="22" fill="url(#zrb-logo-g)"/><path d="M26 62 C26 42 70 42 70 62" fill="none" stroke="#ffffff" stroke-width="6" stroke-linecap="round"/><path d="M26 62 v8 M70 62 v8" stroke="#ffffff" stroke-width="6" stroke-linecap="round"/><path d="M20 70 h56" stroke="#ffffff" stroke-width="5" stroke-linecap="round" opacity="0.85"/><circle cx="48" cy="34" r="6" fill="#8fe3c0"/><path d="M48 40 v10" stroke="#8fe3c0" stroke-width="4" stroke-linecap="round"/></svg>
+      <div><div class="zrb-title">Research Bridge</div><div class="zrb-subtitle">解析与同步工作台</div></div>
+    </div>
+    <div class="zrb-header-actions">
+      <button id="zrb-refresh" class="zrb-button zrb-icon" title="重新扫描缓存和状态">↻</button>
+      <button id="zrb-settings" class="zrb-button zrb-icon" title="独立设置">⚙</button>
+    </div>
+  </header>
+  <main>
+    <section class="zrb-intro">
+      <div><h1>文献解析</h1><p>让每篇文献的去向清晰可见。</p></div>
+      <button id="zrb-parse" class="zrb-button zrb-primary">▷ 解析待处理文献（111）</button>
+    </section>
+    <section id="zrb-stats" class="zrb-stats">
+      <button class="zrb-stat zrb-stat-total" data-filter="all"><div class="zrb-stat-label">文献总量</div><div class="zrb-stat-value" id="zrb-total">383</div><div class="zrb-stat-note">Zotero 文献库</div></button>
+      <button class="zrb-stat zrb-stat-parsed" data-filter="parsed"><div class="zrb-stat-label">✓ 已解析</div><div class="zrb-stat-value" id="zrb-parsed">272</div><div class="zrb-stat-note" id="zrb-parsed-note">解析覆盖率 71%</div></button>
+      <button class="zrb-stat zrb-stat-synced" data-filter="synced"><div class="zrb-stat-label">↑ 已同步</div><div class="zrb-stat-value" id="zrb-synced">156</div><div class="zrb-stat-note" id="zrb-synced-note">同步覆盖率 41%</div></button>
+      <button class="zrb-stat zrb-stat-pending" data-filter="pending"><div class="zrb-stat-label">◷ 待解析</div><div class="zrb-stat-value" id="zrb-pending">111</div><div class="zrb-stat-note">等待处理</div></button>
+    </section>
+    <section id="zrb-pipeline" class="zrb-pipeline">
+      <div class="zrb-pipeline-step"><span class="zrb-step-icon">1</span><div><strong>PDF 文献</strong><span id="zrb-flow-total">383 个附件</span></div></div>
+      <div class="zrb-pipeline-line"><div id="zrb-flow-parse" style="width: 71%;"></div></div>
+      <div class="zrb-pipeline-step"><span class="zrb-step-icon zrb-step-green">2</span><div><strong>解析完成</strong><span id="zrb-flow-parsed">272 篇全文就绪</span></div></div>
+      <div class="zrb-pipeline-line"><div id="zrb-flow-sync" style="width: 41%;"></div></div>
+      <div class="zrb-pipeline-step"><span class="zrb-step-icon zrb-step-blue">3</span><div><strong>知识胶囊</strong><span id="zrb-flow-synced">156 篇已校验上传</span></div></div>
+    </section>
+    <section id="zrb-task" class="zrb-task" hidden="hidden">
+      <div class="zrb-task-head"><div><span id="zrb-task-spinner" class="zrb-spinner"></span><strong id="zrb-task-title">正在处理</strong></div><span id="zrb-task-percent">0%</span></div>
+      <div class="zrb-task-detail" id="zrb-task-detail"></div><progress id="zrb-task-progress" value="0" max="100"></progress>
+    </section>
+    <section class="zrb-workspace">
+      <div class="zrb-list-area">
+        <div class="zrb-toolbar"><input id="zrb-search" type="search" placeholder="搜索标题、DOI 或附件 Key…" /><select id="zrb-sort"><option value="attention">待处理优先</option><option value="title">按标题</option><option value="recent">最近更新</option><option value="year">按年份</option></select></div>
+        <div class="zrb-filter-tabs">
+          <button class="zrb-nav-item zrb-active" data-filter="all">全部 <b id="zrb-count-all">383</b></button>
+          <button class="zrb-nav-item" data-filter="pending">待解析 <b id="zrb-count-pending">111</b></button>
+          <button class="zrb-nav-item" data-filter="parsed">已解析 <b id="zrb-count-parsed">272</b></button>
+          <button class="zrb-nav-item" data-filter="synced">已同步 <b id="zrb-count-synced">156</b></button>
+          <button class="zrb-nav-item" data-filter="failed">需关注 <b id="zrb-count-failed">4</b></button>
+          <span hidden="hidden"><b id="zrb-count-parsing">0</b><b id="zrb-count-ready">0</b></span>
+        </div>
+        <div class="zrb-list-heading"><strong id="zrb-list-title">全部文献</strong><span id="zrb-list-count">显示 7 / 383 篇</span></div>
+        <div id="zrb-items" class="zrb-items">
+      <!-- 假数据 1: 待解析 + 超长标题 -->
+      <div class="zrb-item">
+        <div class="zrb-paper-info">
+          <div class="zrb-paper-title" title="Attention Is All You Need: Discovering Deep Multimodal Transformer Architectures for Ultra Large-Scale Cross-Lingual Knowledge Representation">Attention Is All You Need: Discovering Deep Multimodal Transformer Architectures for Ultra Large-Scale Cross-Lingual Knowledge Representation</div>
+          <div class="zrb-paper-meta">2017 · ATTR1001 · 10.48550/arXiv.1706.03762</div>
+        </div>
+        <span class="zrb-status zrb-status-wait">待解析</span>
+        <span class="zrb-status zrb-status-neutral">未同步</span>
+        <button class="zrb-locate" title="解析这篇文献">↻</button>
+      </div>
+
+      <!-- 假数据 2: 已解析 + 已同步 -->
+      <div class="zrb-item">
+        <div class="zrb-paper-info">
+          <div class="zrb-paper-title" title="Deep Residual Learning for Image Recognition">Deep Residual Learning for Image Recognition</div>
+          <div class="zrb-paper-meta">2016 · HE1002 · 10.1109/CVPR.2016.90</div>
+        </div>
+        <span class="zrb-status zrb-status-ok">已解析</span>
+        <span class="zrb-status zrb-status-info">已同步 ✓</span>
+        <button class="zrb-locate" title="在 Zotero 中打开">↗</button>
+      </div>
+
+      <!-- 假数据 3: 解析中 -->
+      <div class="zrb-item">
+        <div class="zrb-paper-info">
+          <div class="zrb-paper-title" title="BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding">BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding</div>
+          <div class="zrb-paper-meta">2018 · DEV1003 · 10.18653/v1/N19-1423</div>
+        </div>
+        <span class="zrb-status zrb-status-info">解析中</span>
+        <span class="zrb-status zrb-status-neutral">未同步</span>
+        <button class="zrb-locate" title="在 Zotero 中打开">↗</button>
+      </div>
+
+      <!-- 假数据 4: 解析失败 + 超长错误信息 (验证 overflow-wrap: anywhere) -->
+      <div class="zrb-item">
+        <div class="zrb-paper-info">
+          <div class="zrb-paper-title" title="Quantum Computational Supremacy Using a High-Dimensional Programmable Superconducting Processor">Quantum Computational Supremacy Using a High-Dimensional Programmable Superconducting Processor</div>
+          <div class="zrb-paper-meta">2019 · ARU1004 · 10.1038/s41586-019-1666-5</div>
+        </div>
+        <span class="zrb-status zrb-status-error">解析失败</span>
+        <span class="zrb-status zrb-status-neutral">未同步</span>
+        <button class="zrb-locate" title="解析这篇文献">↻</button>
+        <div class="zrb-error-detail">MinerU API Error 504: Gateway Timeout after 60000ms. Detail: Failed to parse vector graphics stream at page 14; memory limit exceeded (1024MB allocated). Please retry or split the PDF.</div>
+      </div>
+
+      <!-- 假数据 5: 已解析 + 待同步 -->
+      <div class="zrb-item">
+        <div class="zrb-paper-info">
+          <div class="zrb-paper-title" title="Generative Adversarial Nets">Generative Adversarial Nets</div>
+          <div class="zrb-paper-meta">2014 · GOOD1005 · 10.1145/3422622</div>
+        </div>
+        <span class="zrb-status zrb-status-ok">已解析</span>
+        <span class="zrb-status zrb-status-wait">待同步</span>
+        <button class="zrb-locate" title="在 Zotero 中打开">↗</button>
+      </div>
+
+      <!-- 假数据 6: 已解析 + 知识库已验证 -->
+      <div class="zrb-item">
+        <div class="zrb-paper-info">
+          <div class="zrb-paper-title" title="Mastering the Game of Go with Deep Neural Networks and Tree Search">Mastering the Game of Go with Deep Neural Networks and Tree Search</div>
+          <div class="zrb-paper-meta">2016 · SILV1006 · 10.1038/nature16961</div>
+        </div>
+        <span class="zrb-status zrb-status-ok">已解析</span>
+        <span class="zrb-status zrb-status-info">知识库已验证</span>
+        <button class="zrb-locate" title="在 Zotero 中打开">↗</button>
+      </div>
+
+      <!-- 假数据 7: 同步失败 + 错误详情 -->
+      <div class="zrb-item">
+        <div class="zrb-paper-info">
+          <div class="zrb-paper-title" title="Language Models are Few-Shot Learners">Language Models are Few-Shot Learners</div>
+          <div class="zrb-paper-meta">2020 · BROW1007 · 10.48550/arXiv.2005.14165</div>
+        </div>
+        <span class="zrb-status zrb-status-ok">已解析</span>
+        <span class="zrb-status zrb-status-error">同步失败</span>
+        <button class="zrb-locate" title="重试同步">↻</button>
+        <div class="zrb-error-detail">S3 Capsule Error 403: SignatureDoesNotMatch. AccessKey Secret is invalid or expired for bucket 'capsule-prod-bj'.</div>
+      </div>
+    </div>
+        <div class="zrb-footer-bar"><span id="zrb-footer-text">本地账本 · 383 条记录 · 更新于 18:20</span><div><button id="zrb-export" class="zrb-button zrb-secondary">导出</button><button id="zrb-sync" class="zrb-button zrb-secondary">↑ 同步</button></div></div>
+      </div>
+    </section>
+  </main>
+</div>
+      </div>
+    </div>
+
+    <!-- 300px 典型窄侧栏 (重点验证数字 383 完整显示) -->
+    <div class="preview-column" id="col-300">
+      <div class="preview-col-header">
+        <span>典型窄侧栏 (300px)</span>
+        <span>数字 383 无裁切</span>
+      </div>
+      <div class="preview-device zrb-sidebar-body" style="width: 300px;">
+        <div id="zrb-app" class="zrb-sidebar-app">
+  <header id="zrb-header">
+    <div class="zrb-brand">
+      <svg class="zrb-logo" viewBox="0 0 96 96" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><defs><linearGradient id="zrb-logo-g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#3f8fe0"/><stop offset="1" stop-color="#1f5fa8"/></linearGradient></defs><rect x="4" y="4" width="88" height="88" rx="22" fill="url(#zrb-logo-g)"/><path d="M26 62 C26 42 70 42 70 62" fill="none" stroke="#ffffff" stroke-width="6" stroke-linecap="round"/><path d="M26 62 v8 M70 62 v8" stroke="#ffffff" stroke-width="6" stroke-linecap="round"/><path d="M20 70 h56" stroke="#ffffff" stroke-width="5" stroke-linecap="round" opacity="0.85"/><circle cx="48" cy="34" r="6" fill="#8fe3c0"/><path d="M48 40 v10" stroke="#8fe3c0" stroke-width="4" stroke-linecap="round"/></svg>
+      <div><div class="zrb-title">Research Bridge</div><div class="zrb-subtitle">解析与同步工作台</div></div>
+    </div>
+    <div class="zrb-header-actions">
+      <button id="zrb-refresh" class="zrb-button zrb-icon" title="重新扫描缓存和状态">↻</button>
+      <button id="zrb-settings" class="zrb-button zrb-icon" title="独立设置">⚙</button>
+    </div>
+  </header>
+  <main>
+    <section class="zrb-intro">
+      <div><h1>文献解析</h1><p>让每篇文献的去向清晰可见。</p></div>
+      <button id="zrb-parse" class="zrb-button zrb-primary">▷ 解析待处理文献（111）</button>
+    </section>
+    <section id="zrb-stats" class="zrb-stats">
+      <button class="zrb-stat zrb-stat-total" data-filter="all"><div class="zrb-stat-label">文献总量</div><div class="zrb-stat-value" id="zrb-total">383</div><div class="zrb-stat-note">Zotero 文献库</div></button>
+      <button class="zrb-stat zrb-stat-parsed" data-filter="parsed"><div class="zrb-stat-label">✓ 已解析</div><div class="zrb-stat-value" id="zrb-parsed">272</div><div class="zrb-stat-note" id="zrb-parsed-note">解析覆盖率 71%</div></button>
+      <button class="zrb-stat zrb-stat-synced" data-filter="synced"><div class="zrb-stat-label">↑ 已同步</div><div class="zrb-stat-value" id="zrb-synced">156</div><div class="zrb-stat-note" id="zrb-synced-note">同步覆盖率 41%</div></button>
+      <button class="zrb-stat zrb-stat-pending" data-filter="pending"><div class="zrb-stat-label">◷ 待解析</div><div class="zrb-stat-value" id="zrb-pending">111</div><div class="zrb-stat-note">等待处理</div></button>
+    </section>
+    <section id="zrb-pipeline" class="zrb-pipeline">
+      <div class="zrb-pipeline-step"><span class="zrb-step-icon">1</span><div><strong>PDF 文献</strong><span id="zrb-flow-total">383 个附件</span></div></div>
+      <div class="zrb-pipeline-line"><div id="zrb-flow-parse" style="width: 71%;"></div></div>
+      <div class="zrb-pipeline-step"><span class="zrb-step-icon zrb-step-green">2</span><div><strong>解析完成</strong><span id="zrb-flow-parsed">272 篇全文就绪</span></div></div>
+      <div class="zrb-pipeline-line"><div id="zrb-flow-sync" style="width: 41%;"></div></div>
+      <div class="zrb-pipeline-step"><span class="zrb-step-icon zrb-step-blue">3</span><div><strong>知识胶囊</strong><span id="zrb-flow-synced">156 篇已校验上传</span></div></div>
+    </section>
+    <section id="zrb-task" class="zrb-task" hidden="hidden">
+      <div class="zrb-task-head"><div><span id="zrb-task-spinner" class="zrb-spinner"></span><strong id="zrb-task-title">正在处理</strong></div><span id="zrb-task-percent">0%</span></div>
+      <div class="zrb-task-detail" id="zrb-task-detail"></div><progress id="zrb-task-progress" value="0" max="100"></progress>
+    </section>
+    <section class="zrb-workspace">
+      <div class="zrb-list-area">
+        <div class="zrb-toolbar"><input id="zrb-search" type="search" placeholder="搜索标题、DOI 或附件 Key…" /><select id="zrb-sort"><option value="attention">待处理优先</option><option value="title">按标题</option><option value="recent">最近更新</option><option value="year">按年份</option></select></div>
+        <div class="zrb-filter-tabs">
+          <button class="zrb-nav-item zrb-active" data-filter="all">全部 <b id="zrb-count-all">383</b></button>
+          <button class="zrb-nav-item" data-filter="pending">待解析 <b id="zrb-count-pending">111</b></button>
+          <button class="zrb-nav-item" data-filter="parsed">已解析 <b id="zrb-count-parsed">272</b></button>
+          <button class="zrb-nav-item" data-filter="synced">已同步 <b id="zrb-count-synced">156</b></button>
+          <button class="zrb-nav-item" data-filter="failed">需关注 <b id="zrb-count-failed">4</b></button>
+          <span hidden="hidden"><b id="zrb-count-parsing">0</b><b id="zrb-count-ready">0</b></span>
+        </div>
+        <div class="zrb-list-heading"><strong id="zrb-list-title">全部文献</strong><span id="zrb-list-count">显示 7 / 383 篇</span></div>
+        <div id="zrb-items" class="zrb-items">
+      <!-- 假数据 1: 待解析 + 超长标题 -->
+      <div class="zrb-item">
+        <div class="zrb-paper-info">
+          <div class="zrb-paper-title" title="Attention Is All You Need: Discovering Deep Multimodal Transformer Architectures for Ultra Large-Scale Cross-Lingual Knowledge Representation">Attention Is All You Need: Discovering Deep Multimodal Transformer Architectures for Ultra Large-Scale Cross-Lingual Knowledge Representation</div>
+          <div class="zrb-paper-meta">2017 · ATTR1001 · 10.48550/arXiv.1706.03762</div>
+        </div>
+        <span class="zrb-status zrb-status-wait">待解析</span>
+        <span class="zrb-status zrb-status-neutral">未同步</span>
+        <button class="zrb-locate" title="解析这篇文献">↻</button>
+      </div>
+
+      <!-- 假数据 2: 已解析 + 已同步 -->
+      <div class="zrb-item">
+        <div class="zrb-paper-info">
+          <div class="zrb-paper-title" title="Deep Residual Learning for Image Recognition">Deep Residual Learning for Image Recognition</div>
+          <div class="zrb-paper-meta">2016 · HE1002 · 10.1109/CVPR.2016.90</div>
+        </div>
+        <span class="zrb-status zrb-status-ok">已解析</span>
+        <span class="zrb-status zrb-status-info">已同步 ✓</span>
+        <button class="zrb-locate" title="在 Zotero 中打开">↗</button>
+      </div>
+
+      <!-- 假数据 3: 解析中 -->
+      <div class="zrb-item">
+        <div class="zrb-paper-info">
+          <div class="zrb-paper-title" title="BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding">BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding</div>
+          <div class="zrb-paper-meta">2018 · DEV1003 · 10.18653/v1/N19-1423</div>
+        </div>
+        <span class="zrb-status zrb-status-info">解析中</span>
+        <span class="zrb-status zrb-status-neutral">未同步</span>
+        <button class="zrb-locate" title="在 Zotero 中打开">↗</button>
+      </div>
+
+      <!-- 假数据 4: 解析失败 + 超长错误信息 (验证 overflow-wrap: anywhere) -->
+      <div class="zrb-item">
+        <div class="zrb-paper-info">
+          <div class="zrb-paper-title" title="Quantum Computational Supremacy Using a High-Dimensional Programmable Superconducting Processor">Quantum Computational Supremacy Using a High-Dimensional Programmable Superconducting Processor</div>
+          <div class="zrb-paper-meta">2019 · ARU1004 · 10.1038/s41586-019-1666-5</div>
+        </div>
+        <span class="zrb-status zrb-status-error">解析失败</span>
+        <span class="zrb-status zrb-status-neutral">未同步</span>
+        <button class="zrb-locate" title="解析这篇文献">↻</button>
+        <div class="zrb-error-detail">MinerU API Error 504: Gateway Timeout after 60000ms. Detail: Failed to parse vector graphics stream at page 14; memory limit exceeded (1024MB allocated). Please retry or split the PDF.</div>
+      </div>
+
+      <!-- 假数据 5: 已解析 + 待同步 -->
+      <div class="zrb-item">
+        <div class="zrb-paper-info">
+          <div class="zrb-paper-title" title="Generative Adversarial Nets">Generative Adversarial Nets</div>
+          <div class="zrb-paper-meta">2014 · GOOD1005 · 10.1145/3422622</div>
+        </div>
+        <span class="zrb-status zrb-status-ok">已解析</span>
+        <span class="zrb-status zrb-status-wait">待同步</span>
+        <button class="zrb-locate" title="在 Zotero 中打开">↗</button>
+      </div>
+
+      <!-- 假数据 6: 已解析 + 知识库已验证 -->
+      <div class="zrb-item">
+        <div class="zrb-paper-info">
+          <div class="zrb-paper-title" title="Mastering the Game of Go with Deep Neural Networks and Tree Search">Mastering the Game of Go with Deep Neural Networks and Tree Search</div>
+          <div class="zrb-paper-meta">2016 · SILV1006 · 10.1038/nature16961</div>
+        </div>
+        <span class="zrb-status zrb-status-ok">已解析</span>
+        <span class="zrb-status zrb-status-info">知识库已验证</span>
+        <button class="zrb-locate" title="在 Zotero 中打开">↗</button>
+      </div>
+
+      <!-- 假数据 7: 同步失败 + 错误详情 -->
+      <div class="zrb-item">
+        <div class="zrb-paper-info">
+          <div class="zrb-paper-title" title="Language Models are Few-Shot Learners">Language Models are Few-Shot Learners</div>
+          <div class="zrb-paper-meta">2020 · BROW1007 · 10.48550/arXiv.2005.14165</div>
+        </div>
+        <span class="zrb-status zrb-status-ok">已解析</span>
+        <span class="zrb-status zrb-status-error">同步失败</span>
+        <button class="zrb-locate" title="重试同步">↻</button>
+        <div class="zrb-error-detail">S3 Capsule Error 403: SignatureDoesNotMatch. AccessKey Secret is invalid or expired for bucket 'capsule-prod-bj'.</div>
+      </div>
+    </div>
+        <div class="zrb-footer-bar"><span id="zrb-footer-text">本地账本 · 383 条记录 · 更新于 18:20</span><div><button id="zrb-export" class="zrb-button zrb-secondary">导出</button><button id="zrb-sync" class="zrb-button zrb-secondary">↑ 同步</button></div></div>
+      </div>
+    </section>
+  </main>
+</div>
+      </div>
+    </div>
+
+    <!-- 360px 标准视口 -->
+    <div class="preview-column" id="col-360">
+      <div class="preview-col-header">
+        <span>标准侧栏 (360px)</span>
+        <span>常见使用宽度</span>
+      </div>
+      <div class="preview-device zrb-sidebar-body" style="width: 360px;">
+        <div id="zrb-app" class="zrb-sidebar-app">
+  <header id="zrb-header">
+    <div class="zrb-brand">
+      <svg class="zrb-logo" viewBox="0 0 96 96" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><defs><linearGradient id="zrb-logo-g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#3f8fe0"/><stop offset="1" stop-color="#1f5fa8"/></linearGradient></defs><rect x="4" y="4" width="88" height="88" rx="22" fill="url(#zrb-logo-g)"/><path d="M26 62 C26 42 70 42 70 62" fill="none" stroke="#ffffff" stroke-width="6" stroke-linecap="round"/><path d="M26 62 v8 M70 62 v8" stroke="#ffffff" stroke-width="6" stroke-linecap="round"/><path d="M20 70 h56" stroke="#ffffff" stroke-width="5" stroke-linecap="round" opacity="0.85"/><circle cx="48" cy="34" r="6" fill="#8fe3c0"/><path d="M48 40 v10" stroke="#8fe3c0" stroke-width="4" stroke-linecap="round"/></svg>
+      <div><div class="zrb-title">Research Bridge</div><div class="zrb-subtitle">解析与同步工作台</div></div>
+    </div>
+    <div class="zrb-header-actions">
+      <button id="zrb-refresh" class="zrb-button zrb-icon" title="重新扫描缓存和状态">↻</button>
+      <button id="zrb-settings" class="zrb-button zrb-icon" title="独立设置">⚙</button>
+    </div>
+  </header>
+  <main>
+    <section class="zrb-intro">
+      <div><h1>文献解析</h1><p>让每篇文献的去向清晰可见。</p></div>
+      <button id="zrb-parse" class="zrb-button zrb-primary">▷ 解析待处理文献（111）</button>
+    </section>
+    <section id="zrb-stats" class="zrb-stats">
+      <button class="zrb-stat zrb-stat-total" data-filter="all"><div class="zrb-stat-label">文献总量</div><div class="zrb-stat-value" id="zrb-total">383</div><div class="zrb-stat-note">Zotero 文献库</div></button>
+      <button class="zrb-stat zrb-stat-parsed" data-filter="parsed"><div class="zrb-stat-label">✓ 已解析</div><div class="zrb-stat-value" id="zrb-parsed">272</div><div class="zrb-stat-note" id="zrb-parsed-note">解析覆盖率 71%</div></button>
+      <button class="zrb-stat zrb-stat-synced" data-filter="synced"><div class="zrb-stat-label">↑ 已同步</div><div class="zrb-stat-value" id="zrb-synced">156</div><div class="zrb-stat-note" id="zrb-synced-note">同步覆盖率 41%</div></button>
+      <button class="zrb-stat zrb-stat-pending" data-filter="pending"><div class="zrb-stat-label">◷ 待解析</div><div class="zrb-stat-value" id="zrb-pending">111</div><div class="zrb-stat-note">等待处理</div></button>
+    </section>
+    <section id="zrb-pipeline" class="zrb-pipeline">
+      <div class="zrb-pipeline-step"><span class="zrb-step-icon">1</span><div><strong>PDF 文献</strong><span id="zrb-flow-total">383 个附件</span></div></div>
+      <div class="zrb-pipeline-line"><div id="zrb-flow-parse" style="width: 71%;"></div></div>
+      <div class="zrb-pipeline-step"><span class="zrb-step-icon zrb-step-green">2</span><div><strong>解析完成</strong><span id="zrb-flow-parsed">272 篇全文就绪</span></div></div>
+      <div class="zrb-pipeline-line"><div id="zrb-flow-sync" style="width: 41%;"></div></div>
+      <div class="zrb-pipeline-step"><span class="zrb-step-icon zrb-step-blue">3</span><div><strong>知识胶囊</strong><span id="zrb-flow-synced">156 篇已校验上传</span></div></div>
+    </section>
+    <section id="zrb-task" class="zrb-task" hidden="hidden">
+      <div class="zrb-task-head"><div><span id="zrb-task-spinner" class="zrb-spinner"></span><strong id="zrb-task-title">正在处理</strong></div><span id="zrb-task-percent">0%</span></div>
+      <div class="zrb-task-detail" id="zrb-task-detail"></div><progress id="zrb-task-progress" value="0" max="100"></progress>
+    </section>
+    <section class="zrb-workspace">
+      <div class="zrb-list-area">
+        <div class="zrb-toolbar"><input id="zrb-search" type="search" placeholder="搜索标题、DOI 或附件 Key…" /><select id="zrb-sort"><option value="attention">待处理优先</option><option value="title">按标题</option><option value="recent">最近更新</option><option value="year">按年份</option></select></div>
+        <div class="zrb-filter-tabs">
+          <button class="zrb-nav-item zrb-active" data-filter="all">全部 <b id="zrb-count-all">383</b></button>
+          <button class="zrb-nav-item" data-filter="pending">待解析 <b id="zrb-count-pending">111</b></button>
+          <button class="zrb-nav-item" data-filter="parsed">已解析 <b id="zrb-count-parsed">272</b></button>
+          <button class="zrb-nav-item" data-filter="synced">已同步 <b id="zrb-count-synced">156</b></button>
+          <button class="zrb-nav-item" data-filter="failed">需关注 <b id="zrb-count-failed">4</b></button>
+          <span hidden="hidden"><b id="zrb-count-parsing">0</b><b id="zrb-count-ready">0</b></span>
+        </div>
+        <div class="zrb-list-heading"><strong id="zrb-list-title">全部文献</strong><span id="zrb-list-count">显示 7 / 383 篇</span></div>
+        <div id="zrb-items" class="zrb-items">
+      <!-- 假数据 1: 待解析 + 超长标题 -->
+      <div class="zrb-item">
+        <div class="zrb-paper-info">
+          <div class="zrb-paper-title" title="Attention Is All You Need: Discovering Deep Multimodal Transformer Architectures for Ultra Large-Scale Cross-Lingual Knowledge Representation">Attention Is All You Need: Discovering Deep Multimodal Transformer Architectures for Ultra Large-Scale Cross-Lingual Knowledge Representation</div>
+          <div class="zrb-paper-meta">2017 · ATTR1001 · 10.48550/arXiv.1706.03762</div>
+        </div>
+        <span class="zrb-status zrb-status-wait">待解析</span>
+        <span class="zrb-status zrb-status-neutral">未同步</span>
+        <button class="zrb-locate" title="解析这篇文献">↻</button>
+      </div>
+
+      <!-- 假数据 2: 已解析 + 已同步 -->
+      <div class="zrb-item">
+        <div class="zrb-paper-info">
+          <div class="zrb-paper-title" title="Deep Residual Learning for Image Recognition">Deep Residual Learning for Image Recognition</div>
+          <div class="zrb-paper-meta">2016 · HE1002 · 10.1109/CVPR.2016.90</div>
+        </div>
+        <span class="zrb-status zrb-status-ok">已解析</span>
+        <span class="zrb-status zrb-status-info">已同步 ✓</span>
+        <button class="zrb-locate" title="在 Zotero 中打开">↗</button>
+      </div>
+
+      <!-- 假数据 3: 解析中 -->
+      <div class="zrb-item">
+        <div class="zrb-paper-info">
+          <div class="zrb-paper-title" title="BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding">BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding</div>
+          <div class="zrb-paper-meta">2018 · DEV1003 · 10.18653/v1/N19-1423</div>
+        </div>
+        <span class="zrb-status zrb-status-info">解析中</span>
+        <span class="zrb-status zrb-status-neutral">未同步</span>
+        <button class="zrb-locate" title="在 Zotero 中打开">↗</button>
+      </div>
+
+      <!-- 假数据 4: 解析失败 + 超长错误信息 (验证 overflow-wrap: anywhere) -->
+      <div class="zrb-item">
+        <div class="zrb-paper-info">
+          <div class="zrb-paper-title" title="Quantum Computational Supremacy Using a High-Dimensional Programmable Superconducting Processor">Quantum Computational Supremacy Using a High-Dimensional Programmable Superconducting Processor</div>
+          <div class="zrb-paper-meta">2019 · ARU1004 · 10.1038/s41586-019-1666-5</div>
+        </div>
+        <span class="zrb-status zrb-status-error">解析失败</span>
+        <span class="zrb-status zrb-status-neutral">未同步</span>
+        <button class="zrb-locate" title="解析这篇文献">↻</button>
+        <div class="zrb-error-detail">MinerU API Error 504: Gateway Timeout after 60000ms. Detail: Failed to parse vector graphics stream at page 14; memory limit exceeded (1024MB allocated). Please retry or split the PDF.</div>
+      </div>
+
+      <!-- 假数据 5: 已解析 + 待同步 -->
+      <div class="zrb-item">
+        <div class="zrb-paper-info">
+          <div class="zrb-paper-title" title="Generative Adversarial Nets">Generative Adversarial Nets</div>
+          <div class="zrb-paper-meta">2014 · GOOD1005 · 10.1145/3422622</div>
+        </div>
+        <span class="zrb-status zrb-status-ok">已解析</span>
+        <span class="zrb-status zrb-status-wait">待同步</span>
+        <button class="zrb-locate" title="在 Zotero 中打开">↗</button>
+      </div>
+
+      <!-- 假数据 6: 已解析 + 知识库已验证 -->
+      <div class="zrb-item">
+        <div class="zrb-paper-info">
+          <div class="zrb-paper-title" title="Mastering the Game of Go with Deep Neural Networks and Tree Search">Mastering the Game of Go with Deep Neural Networks and Tree Search</div>
+          <div class="zrb-paper-meta">2016 · SILV1006 · 10.1038/nature16961</div>
+        </div>
+        <span class="zrb-status zrb-status-ok">已解析</span>
+        <span class="zrb-status zrb-status-info">知识库已验证</span>
+        <button class="zrb-locate" title="在 Zotero 中打开">↗</button>
+      </div>
+
+      <!-- 假数据 7: 同步失败 + 错误详情 -->
+      <div class="zrb-item">
+        <div class="zrb-paper-info">
+          <div class="zrb-paper-title" title="Language Models are Few-Shot Learners">Language Models are Few-Shot Learners</div>
+          <div class="zrb-paper-meta">2020 · BROW1007 · 10.48550/arXiv.2005.14165</div>
+        </div>
+        <span class="zrb-status zrb-status-ok">已解析</span>
+        <span class="zrb-status zrb-status-error">同步失败</span>
+        <button class="zrb-locate" title="重试同步">↻</button>
+        <div class="zrb-error-detail">S3 Capsule Error 403: SignatureDoesNotMatch. AccessKey Secret is invalid or expired for bucket 'capsule-prod-bj'.</div>
+      </div>
+    </div>
+        <div class="zrb-footer-bar"><span id="zrb-footer-text">本地账本 · 383 条记录 · 更新于 18:20</span><div><button id="zrb-export" class="zrb-button zrb-secondary">导出</button><button id="zrb-sync" class="zrb-button zrb-secondary">↑ 同步</button></div></div>
+      </div>
+    </section>
+  </main>
+</div>
+      </div>
+    </div>
+
+    <!-- 500px 宽屏视口 -->
+    <div class="preview-column" id="col-500">
+      <div class="preview-col-header">
+        <span>宽屏侧栏 (500px)</span>
+        <span>统计卡 4 列横排</span>
+      </div>
+      <div class="preview-device zrb-sidebar-body" style="width: 500px;">
+        <div id="zrb-app" class="zrb-sidebar-app">
+  <header id="zrb-header">
+    <div class="zrb-brand">
+      <svg class="zrb-logo" viewBox="0 0 96 96" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><defs><linearGradient id="zrb-logo-g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#3f8fe0"/><stop offset="1" stop-color="#1f5fa8"/></linearGradient></defs><rect x="4" y="4" width="88" height="88" rx="22" fill="url(#zrb-logo-g)"/><path d="M26 62 C26 42 70 42 70 62" fill="none" stroke="#ffffff" stroke-width="6" stroke-linecap="round"/><path d="M26 62 v8 M70 62 v8" stroke="#ffffff" stroke-width="6" stroke-linecap="round"/><path d="M20 70 h56" stroke="#ffffff" stroke-width="5" stroke-linecap="round" opacity="0.85"/><circle cx="48" cy="34" r="6" fill="#8fe3c0"/><path d="M48 40 v10" stroke="#8fe3c0" stroke-width="4" stroke-linecap="round"/></svg>
+      <div><div class="zrb-title">Research Bridge</div><div class="zrb-subtitle">解析与同步工作台</div></div>
+    </div>
+    <div class="zrb-header-actions">
+      <button id="zrb-refresh" class="zrb-button zrb-icon" title="重新扫描缓存和状态">↻</button>
+      <button id="zrb-settings" class="zrb-button zrb-icon" title="独立设置">⚙</button>
+    </div>
+  </header>
+  <main>
+    <section class="zrb-intro">
+      <div><h1>文献解析</h1><p>让每篇文献的去向清晰可见。</p></div>
+      <button id="zrb-parse" class="zrb-button zrb-primary">▷ 解析待处理文献（111）</button>
+    </section>
+    <section id="zrb-stats" class="zrb-stats">
+      <button class="zrb-stat zrb-stat-total" data-filter="all"><div class="zrb-stat-label">文献总量</div><div class="zrb-stat-value" id="zrb-total">383</div><div class="zrb-stat-note">Zotero 文献库</div></button>
+      <button class="zrb-stat zrb-stat-parsed" data-filter="parsed"><div class="zrb-stat-label">✓ 已解析</div><div class="zrb-stat-value" id="zrb-parsed">272</div><div class="zrb-stat-note" id="zrb-parsed-note">解析覆盖率 71%</div></button>
+      <button class="zrb-stat zrb-stat-synced" data-filter="synced"><div class="zrb-stat-label">↑ 已同步</div><div class="zrb-stat-value" id="zrb-synced">156</div><div class="zrb-stat-note" id="zrb-synced-note">同步覆盖率 41%</div></button>
+      <button class="zrb-stat zrb-stat-pending" data-filter="pending"><div class="zrb-stat-label">◷ 待解析</div><div class="zrb-stat-value" id="zrb-pending">111</div><div class="zrb-stat-note">等待处理</div></button>
+    </section>
+    <section id="zrb-pipeline" class="zrb-pipeline">
+      <div class="zrb-pipeline-step"><span class="zrb-step-icon">1</span><div><strong>PDF 文献</strong><span id="zrb-flow-total">383 个附件</span></div></div>
+      <div class="zrb-pipeline-line"><div id="zrb-flow-parse" style="width: 71%;"></div></div>
+      <div class="zrb-pipeline-step"><span class="zrb-step-icon zrb-step-green">2</span><div><strong>解析完成</strong><span id="zrb-flow-parsed">272 篇全文就绪</span></div></div>
+      <div class="zrb-pipeline-line"><div id="zrb-flow-sync" style="width: 41%;"></div></div>
+      <div class="zrb-pipeline-step"><span class="zrb-step-icon zrb-step-blue">3</span><div><strong>知识胶囊</strong><span id="zrb-flow-synced">156 篇已校验上传</span></div></div>
+    </section>
+    <section id="zrb-task" class="zrb-task" hidden="hidden">
+      <div class="zrb-task-head"><div><span id="zrb-task-spinner" class="zrb-spinner"></span><strong id="zrb-task-title">正在处理</strong></div><span id="zrb-task-percent">0%</span></div>
+      <div class="zrb-task-detail" id="zrb-task-detail"></div><progress id="zrb-task-progress" value="0" max="100"></progress>
+    </section>
+    <section class="zrb-workspace">
+      <div class="zrb-list-area">
+        <div class="zrb-toolbar"><input id="zrb-search" type="search" placeholder="搜索标题、DOI 或附件 Key…" /><select id="zrb-sort"><option value="attention">待处理优先</option><option value="title">按标题</option><option value="recent">最近更新</option><option value="year">按年份</option></select></div>
+        <div class="zrb-filter-tabs">
+          <button class="zrb-nav-item zrb-active" data-filter="all">全部 <b id="zrb-count-all">383</b></button>
+          <button class="zrb-nav-item" data-filter="pending">待解析 <b id="zrb-count-pending">111</b></button>
+          <button class="zrb-nav-item" data-filter="parsed">已解析 <b id="zrb-count-parsed">272</b></button>
+          <button class="zrb-nav-item" data-filter="synced">已同步 <b id="zrb-count-synced">156</b></button>
+          <button class="zrb-nav-item" data-filter="failed">需关注 <b id="zrb-count-failed">4</b></button>
+          <span hidden="hidden"><b id="zrb-count-parsing">0</b><b id="zrb-count-ready">0</b></span>
+        </div>
+        <div class="zrb-list-heading"><strong id="zrb-list-title">全部文献</strong><span id="zrb-list-count">显示 7 / 383 篇</span></div>
+        <div id="zrb-items" class="zrb-items">
+      <!-- 假数据 1: 待解析 + 超长标题 -->
+      <div class="zrb-item">
+        <div class="zrb-paper-info">
+          <div class="zrb-paper-title" title="Attention Is All You Need: Discovering Deep Multimodal Transformer Architectures for Ultra Large-Scale Cross-Lingual Knowledge Representation">Attention Is All You Need: Discovering Deep Multimodal Transformer Architectures for Ultra Large-Scale Cross-Lingual Knowledge Representation</div>
+          <div class="zrb-paper-meta">2017 · ATTR1001 · 10.48550/arXiv.1706.03762</div>
+        </div>
+        <span class="zrb-status zrb-status-wait">待解析</span>
+        <span class="zrb-status zrb-status-neutral">未同步</span>
+        <button class="zrb-locate" title="解析这篇文献">↻</button>
+      </div>
+
+      <!-- 假数据 2: 已解析 + 已同步 -->
+      <div class="zrb-item">
+        <div class="zrb-paper-info">
+          <div class="zrb-paper-title" title="Deep Residual Learning for Image Recognition">Deep Residual Learning for Image Recognition</div>
+          <div class="zrb-paper-meta">2016 · HE1002 · 10.1109/CVPR.2016.90</div>
+        </div>
+        <span class="zrb-status zrb-status-ok">已解析</span>
+        <span class="zrb-status zrb-status-info">已同步 ✓</span>
+        <button class="zrb-locate" title="在 Zotero 中打开">↗</button>
+      </div>
+
+      <!-- 假数据 3: 解析中 -->
+      <div class="zrb-item">
+        <div class="zrb-paper-info">
+          <div class="zrb-paper-title" title="BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding">BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding</div>
+          <div class="zrb-paper-meta">2018 · DEV1003 · 10.18653/v1/N19-1423</div>
+        </div>
+        <span class="zrb-status zrb-status-info">解析中</span>
+        <span class="zrb-status zrb-status-neutral">未同步</span>
+        <button class="zrb-locate" title="在 Zotero 中打开">↗</button>
+      </div>
+
+      <!-- 假数据 4: 解析失败 + 超长错误信息 (验证 overflow-wrap: anywhere) -->
+      <div class="zrb-item">
+        <div class="zrb-paper-info">
+          <div class="zrb-paper-title" title="Quantum Computational Supremacy Using a High-Dimensional Programmable Superconducting Processor">Quantum Computational Supremacy Using a High-Dimensional Programmable Superconducting Processor</div>
+          <div class="zrb-paper-meta">2019 · ARU1004 · 10.1038/s41586-019-1666-5</div>
+        </div>
+        <span class="zrb-status zrb-status-error">解析失败</span>
+        <span class="zrb-status zrb-status-neutral">未同步</span>
+        <button class="zrb-locate" title="解析这篇文献">↻</button>
+        <div class="zrb-error-detail">MinerU API Error 504: Gateway Timeout after 60000ms. Detail: Failed to parse vector graphics stream at page 14; memory limit exceeded (1024MB allocated). Please retry or split the PDF.</div>
+      </div>
+
+      <!-- 假数据 5: 已解析 + 待同步 -->
+      <div class="zrb-item">
+        <div class="zrb-paper-info">
+          <div class="zrb-paper-title" title="Generative Adversarial Nets">Generative Adversarial Nets</div>
+          <div class="zrb-paper-meta">2014 · GOOD1005 · 10.1145/3422622</div>
+        </div>
+        <span class="zrb-status zrb-status-ok">已解析</span>
+        <span class="zrb-status zrb-status-wait">待同步</span>
+        <button class="zrb-locate" title="在 Zotero 中打开">↗</button>
+      </div>
+
+      <!-- 假数据 6: 已解析 + 知识库已验证 -->
+      <div class="zrb-item">
+        <div class="zrb-paper-info">
+          <div class="zrb-paper-title" title="Mastering the Game of Go with Deep Neural Networks and Tree Search">Mastering the Game of Go with Deep Neural Networks and Tree Search</div>
+          <div class="zrb-paper-meta">2016 · SILV1006 · 10.1038/nature16961</div>
+        </div>
+        <span class="zrb-status zrb-status-ok">已解析</span>
+        <span class="zrb-status zrb-status-info">知识库已验证</span>
+        <button class="zrb-locate" title="在 Zotero 中打开">↗</button>
+      </div>
+
+      <!-- 假数据 7: 同步失败 + 错误详情 -->
+      <div class="zrb-item">
+        <div class="zrb-paper-info">
+          <div class="zrb-paper-title" title="Language Models are Few-Shot Learners">Language Models are Few-Shot Learners</div>
+          <div class="zrb-paper-meta">2020 · BROW1007 · 10.48550/arXiv.2005.14165</div>
+        </div>
+        <span class="zrb-status zrb-status-ok">已解析</span>
+        <span class="zrb-status zrb-status-error">同步失败</span>
+        <button class="zrb-locate" title="重试同步">↻</button>
+        <div class="zrb-error-detail">S3 Capsule Error 403: SignatureDoesNotMatch. AccessKey Secret is invalid or expired for bucket 'capsule-prod-bj'.</div>
+      </div>
+    </div>
+        <div class="zrb-footer-bar"><span id="zrb-footer-text">本地账本 · 383 条记录 · 更新于 18:20</span><div><button id="zrb-export" class="zrb-button zrb-secondary">导出</button><button id="zrb-sync" class="zrb-button zrb-secondary">↑ 同步</button></div></div>
+      </div>
+    </section>
+  </main>
+</div>
+      </div>
+    </div>
+
+    <!-- 设置窗口独立视口 -->
+    <div class="preview-column" id="col-settings" style="display: none;">
+      <div class="preview-col-header">
+        <span>设置窗口 (Settings Dialog)</span>
+        <span>正文 13px · label 12.5px · 输入框 32px</span>
+      </div>
+      <div class="preview-settings-window">
+        <div class="settings-app">
+    <header>
+      <div>
+        <h1>工作台设置</h1>
+        <p>解析引擎、云端同步与任务行为</p>
+      </div>
+      <span class="settings-badge">本地保存</span>
+    </header>
+    <main>
+      <section>
+        <h2>解析引擎</h2>
+        <p class="settings-help">两个引擎可同时配置。解析按优先级使用第一个可用引擎，失败自动切换备用；仅点击解析时消耗额度，已有缓存不会重复解析。</p>
+        <label>
+          引擎优先级
+          <select id="parseEngineOrder">
+            <option value="mineru,oxr">MinerU 优先，OXR 备用</option>
+            <option value="oxr,mineru">OXR 优先，MinerU 备用</option>
+          </select>
+        </label>
+        <div class="settings-engine-card">
+          <h3>MinerU</h3>
+          <label>
+            API Token
+            <input id="mineruToken" type="password" placeholder="从 mineru.net API 管理页获取" />
+          </label>
+          <div class="settings-test">
+            <button id="test-mineru" class="settings-secondary">测试 MinerU</button>
+            <span id="test-mineru-result" class="settings-test-result"></span>
+          </div>
+        </div>
+        <div class="settings-engine-card">
+          <h3>OXR / SoMark</h3>
+          <label>
+            站点
+            <select id="oxrSite">
+              <option value="cn">国内站 somark.cn</option>
+              <option value="intl">海外站 somark.ai</option>
+            </select>
+          </label>
+          <label>
+            API Key
+            <input id="oxrApiKey" type="password" placeholder="sk-…（Key 与站点绑定）" />
+          </label>
+          <div class="settings-test">
+            <button id="test-oxr" class="settings-secondary">测试 OXR</button>
+            <span id="test-oxr-result" class="settings-test-result"></span>
+          </div>
+        </div>
+        <label class="settings-check">
+          <input id="allowPaidQuota" type="checkbox" />允许超出每日免费额度（可能产生费用）
+        </label>
+        <p class="settings-help" id="quota-hint">默认只使用服务商每日免费额度：MinerU 约 50 篇/天，OXR 约 25 篇/天，跨天自动恢复。</p>
+        <label class="settings-check">
+          <input id="parseConfirmed" type="checkbox" />已了解解析会消耗 API 额度
+        </label>
+      </section>
+      <section>
+        <h2>中国科技云 · 数据胶囊</h2>
+        <p class="settings-help">全文上传成功会显示为已同步；知识库索引状态单独核验。</p>
+        <label>
+          Endpoint
+          <input id="s3Endpoint" type="text" />
+        </label>
+        <div class="settings-inline">
+          <label>
+            Region
+            <input id="s3Region" type="text" />
+          </label>
+          <label>
+            Bucket
+            <input id="s3Bucket" type="text" />
+          </label>
+        </div>
+        <label>
+          AccessKey ID
+          <input id="s3AccessKey" type="password" />
+        </label>
+        <label>
+          AccessKey Secret
+          <input id="s3Secret" type="password" />
+        </label>
+        <label>
+          UA 应用名
+          <input id="uaApp" type="text" />
+        </label>
+        <label>
+          密钥文件（可选）
+          <input id="s3SecretFile" type="text" placeholder="~/.zrb-secrets/capsule-s3.json" />
+        </label>
+        <div class="settings-test">
+          <button id="test-s3" class="settings-secondary">测试知识库连接</button>
+          <span id="test-s3-result" class="settings-test-result"></span>
+        </div>
+      </section>
+      <section>
+        <h2>文件与任务行为</h2>
+        <label>
+          导出暂存目录
+          <input id="stagingDir" type="text" placeholder="留空使用 Zotero 数据目录" />
+        </label>
+        <label class="settings-check">
+          <input id="autoSync" type="checkbox" />文献变更后自动导出并同步（不包含解析）
+        </label>
+        <label class="settings-check">
+          <input id="figuresSync" type="checkbox" />同步时包含图片
+        </label>
+        <label class="settings-check">
+          <input id="verifyUpload" type="checkbox" />上传后验证远端内容
+        </label>
+        <div class="settings-test">
+          <button id="sync-figures" class="settings-secondary">同步图片文件（较慢）</button>
+          <button id="show-ledger" class="settings-secondary">查看任务账本</button>
+          <span id="advanced-result" class="settings-test-result"></span>
+        </div>
+      </section>
+      <p id="settings-message" class="settings-message"></p>
+    </main>
+    <footer>
+      <span>配置仅保存在此设备</span>
+      <div>
+        <button id="settings-cancel" class="settings-secondary">取消</button>
+        <button id="settings-save" class="settings-primary">保存设置</button>
+      </div>
+    </footer>
+  </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    function setViewMode(mode) {
+      document.querySelectorAll('.preview-btn').forEach(b => b.classList.remove('active'));
+      event.target.classList.add('active');
+      const c260 = document.getElementById('col-260');
+      const c300 = document.getElementById('col-300');
+      const c360 = document.getElementById('col-360');
+      const c500 = document.getElementById('col-500');
+      const cSettings = document.getElementById('col-settings');
+
+      if (mode === 'all') {
+        c260.style.display = 'flex';
+        c300.style.display = 'flex';
+        c360.style.display = 'flex';
+        c500.style.display = 'flex';
+        cSettings.style.display = 'none';
+      } else if (mode === '260') {
+        c260.style.display = 'flex';
+        c300.style.display = 'none';
+        c360.style.display = 'none';
+        c500.style.display = 'none';
+        cSettings.style.display = 'none';
+      } else if (mode === '300') {
+        c260.style.display = 'none';
+        c300.style.display = 'flex';
+        c360.style.display = 'none';
+        c500.style.display = 'none';
+        cSettings.style.display = 'none';
+      } else if (mode === '360') {
+        c260.style.display = 'none';
+        c300.style.display = 'none';
+        c360.style.display = 'flex';
+        c500.style.display = 'none';
+        cSettings.style.display = 'none';
+      } else if (mode === '500') {
+        c260.style.display = 'none';
+        c300.style.display = 'none';
+        c360.style.display = 'none';
+        c500.style.display = 'flex';
+        cSettings.style.display = 'none';
+      } else if (mode === 'settings') {
+        c260.style.display = 'none';
+        c300.style.display = 'none';
+        c360.style.display = 'none';
+        c500.style.display = 'none';
+        cSettings.style.display = 'flex';
+      }
+    }
+
+    let isDark = false;
+    function toggleTheme() {
+      isDark = !isDark;
+      document.documentElement.style.colorScheme = isDark ? 'dark' : 'light';
+      document.querySelectorAll('.preview-device, .preview-settings-window').forEach(dev => {
+        dev.style.colorScheme = isDark ? 'dark' : 'light';
+      });
+    }
+  </script>
+</body>
+</html>

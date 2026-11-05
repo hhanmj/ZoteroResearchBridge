@@ -10,7 +10,8 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..")))
 import kb_mcp_client as K  # noqa: E402
 
-STAGING = r"%USERPROFILE%\Zotero\zrb-upload-staging"
+ZDIR = os.environ.get("ZRB_ZOTERO_DIR", os.path.join(os.path.expanduser("~"), "Zotero"))
+STAGING = os.path.join(ZDIR, "zrb-upload-staging")
 OUT = os.path.dirname(os.path.abspath(__file__))
 
 # 1. 收集 380 篇（attachmentKey -> staging 文件名）
@@ -69,7 +70,7 @@ with open(os.path.join(OUT, "kb_missing.json"), "w", encoding="utf-8") as f:
     json.dump({"found": sorted(found), "missing": missing}, f, ensure_ascii=False, indent=1)
 
 # 2. 生成补传文件夹
-retry_dir = r"%USERPROFILE%\Zotero\zrb-kb-retry"
+retry_dir = os.path.join(ZDIR, "zrb-kb-retry")
 os.makedirs(retry_dir, exist_ok=True)
 for old in os.listdir(retry_dir):
     os.remove(os.path.join(retry_dir, old))

@@ -41,6 +41,8 @@ export default defineConfig({
 
   test: {
     waitForPlugin: `() => Zotero.${pkg.config.addonInstance}.data.initialized`,
+    // 跑完即退出（默认 watch:true 会常驻导致 npm test 永不结束）
+    watch: false,
   },
 
   // If you need to see a more detailed log, uncomment the following line:

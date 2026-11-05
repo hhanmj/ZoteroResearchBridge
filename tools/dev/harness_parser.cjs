@@ -8,10 +8,17 @@ const { execSync } = require("node:child_process");
 const shim = require("./zrb_shim.cjs");
 
 const ROOT = path.resolve(__dirname, "..", "..");
-const PREFS_JS = "<Zotero Profile>/prefs.js";
-const LEDGER_REAL = "%USERPROFILE%/Zotero/zrb-ledger.json";
+// 通过环境变量指定本机路径（避免把个人目录写进仓库）：
+//   ZRB_PREFS_JS=<Zotero Profile>/prefs.js  ZRB_ZOTERO_DIR=<Zotero 数据目录>  ZRB_SAMPLE_PDF=<测试 PDF>
+const PREFS_JS = process.env.ZRB_PREFS_JS || "";
+const ZOTERO_DIR = process.env.ZRB_ZOTERO_DIR || path.join(process.env.USERPROFILE || process.env.HOME || "", "Zotero");
+const LEDGER_REAL = path.join(ZOTERO_DIR, "zrb-ledger.json");
 
 // 1. 从 prefs.js 读真实 Key
+if (!PREFS_JS || !fs.existsSync(PREFS_JS)) {
+  console.error("请设置环境变量 ZRB_PREFS_JS 指向 Zotero Profile 的 prefs.js");
+  process.exit(1);
+}
 const prefsSrc = fs.readFileSync(PREFS_JS, "utf-8");
 function pref(name) {
   const m = prefsSrc.match(new RegExp(`user_pref\\("extensions\\.zotero\\.zrb\\.${name}",\\s*"?(.*?)"?\\);`));
@@ -31,9 +38,14 @@ const sampleDir = path.join(__dirname, "tmp");
 fs.mkdirSync(sampleDir, { recursive: true });
 const samplePdf = path.join(sampleDir, "zrb-harness-sample.pdf");
 if (!fs.existsSync(samplePdf)) {
+  const sourcePdf = process.env.ZRB_SAMPLE_PDF || "";
+  if (!sourcePdf || !fs.existsSync(sourcePdf)) {
+    console.error("请设置环境变量 ZRB_SAMPLE_PDF 指向一篇本机 PDF（取前 2 页做样本）");
+    process.exit(1);
+  }
   console.log("生成 2 页样本 PDF（来自真实文献库）...");
   execSync(
-    `python -c "import pymupdf,sys; src=pymupdf.open(r'%USERPROFILE%/Zotero/storage/RDFI7MQ3/Wang和Li - 2009 - Landslide disaster mitigation in three gorges reservoir, china.pdf'); out=pymupdf.open(); out.insert_pdf(src, from_page=0, to_page=1); out.save(r'${samplePdf.replace(/\\/g, "/")}'); print('pages:', out.page_count)"`,
+    `python -c "import pymupdf,sys; src=pymupdf.open(r'${sourcePdf.replace(/\\/g, "/")}'); out=pymupdf.open(); out.insert_pdf(src, from_page=0, to_page=1); out.save(r'${samplePdf.replace(/\\/g, "/")}'); print('pages:', out.page_count)"`,
     { stdio: "inherit" },
   );
 }
@@ -70,8 +82,16 @@ shim.install({
   log: (m) => console.log(m),
 });
 
-// 5. 运行真实 parser 代码
-const parser = require(path.join(__dirname, "parser.bundle.cjs"));
+// 5. 运行真实 parser 代码（现场用 esbuild 打包，产物不入库）
+const bundle = path.join(__dirname, "parser.bundle.cjs");
+const esbuild = process.platform === "win32"
+  ? path.join(ROOT, "src", "node_modules", "@esbuild", "win32-x64", "esbuild.exe")
+  : path.join(ROOT, "src", "node_modules", ".bin", "esbuild");
+require("node:child_process").execFileSync(esbuild, [
+  path.join(ROOT, "src", "src", "modules", "parser.ts"), "--bundle", "--format=cjs",
+  "--platform=node", "--outfile=" + bundle,
+], { stdio: "inherit", shell: false });
+const parser = require(bundle);
 
 (async () => {
   const t0 = Date.now();

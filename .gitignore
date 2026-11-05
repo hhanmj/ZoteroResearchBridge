@@ -5,6 +5,8 @@ dist/*.map
 
 # 本地文献资产（版权数据，仅存本机/私有云）
 export-full/
+tools/dev/tmp/
+tools/dev/*.bundle.cjs
 
 # 环境与密钥（绝不入库）
 .env

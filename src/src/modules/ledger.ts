@@ -9,7 +9,8 @@ export type TaskStatus =
   | "queued_upload" // 待 S3 上传（P3）
   | "uploaded" // 已上传（P3）
   | "indexed_verified" // 云端已索引（P4）
-  | "export_failed";
+  | "export_failed"
+  | "sync_failed";
 
 export interface LedgerEntry {
   attachmentKey: string;
@@ -62,7 +63,10 @@ export async function load(force = false): Promise<Ledger> {
 
 export async function save(): Promise<void> {
   if (!cache) return;
-  await Zotero.File.putContentsAsync(ledgerPath(), JSON.stringify(cache, null, 1));
+  await Zotero.File.putContentsAsync(
+    ledgerPath(),
+    JSON.stringify(cache, null, 1),
+  );
 }
 
 export function get(): Ledger {
@@ -74,7 +78,9 @@ export function entry(attachmentKey: string): LedgerEntry | undefined {
   return get().entries[attachmentKey];
 }
 
-export function upsert(e: Partial<LedgerEntry> & { attachmentKey: string }): void {
+export function upsert(
+  e: Partial<LedgerEntry> & { attachmentKey: string },
+): void {
   const led = get();
   const prev = led.entries[e.attachmentKey] || ({} as LedgerEntry);
   led.entries[e.attachmentKey] = { ...prev, ...e } as LedgerEntry;
@@ -93,4 +99,3 @@ export function stats(): Record<string, number> {
   }
   return out;
 }
-

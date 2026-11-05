@@ -3,6 +3,7 @@ import * as bridge from "./modules/bridge";
 import { autoBackup } from "./modules/sync";
 import { registerPrefs } from "./modules/prefs";
 import { createZToolkit } from "./utils/ztoolkit";
+import { registerSidebar } from "./modules/dashboard";
 
 async function onStartup() {
   await Promise.all([
@@ -13,9 +14,10 @@ async function onStartup() {
 
   initLocale();
 
-  bridge.registerMenu();
   bridge.registerNotifier();
   registerPrefs();
+  const { migrateDailyDefault } = await import("./modules/parser");
+  migrateDailyDefault();
 
   await Promise.all(
     Zotero.getMainWindows().map((win) => onMainWindowLoad(win)),
@@ -34,6 +36,8 @@ async function onMainWindowLoad(win: _ZoteroTypes.MainWindow): Promise<void> {
   win.MozXULElement.insertFTLIfNeeded(
     `${addon.data.config.addonRef}-mainWindow.ftl`,
   );
+  bridge.registerMenu(win);
+  registerSidebar();
   const popupWin = new ztoolkit.ProgressWindow(addon.data.config.addonName, {
     closeOnClick: true,
     closeTime: -1,

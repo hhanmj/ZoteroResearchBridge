@@ -1,0 +1,138 @@
+<?xml version="1.0"?>
+<?xml-stylesheet href="chrome://global/skin/" type="text/css"?>
+<?xml-stylesheet href="chrome://zrb/content/settings.css" type="text/css"?>
+<window
+  id="zrb-settings-window"
+  title="Research Bridge · 设置"
+  width="720"
+  height="740"
+  onload="if (window.arguments &amp;&amp; window.arguments[0] &amp;&amp; window.arguments[0].onLoad) { window.arguments[0].onLoad(this); }"
+  xmlns="http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul"
+  xmlns:html="http://www.w3.org/1999/xhtml"
+>
+  <html:div class="settings-app">
+    <html:header>
+      <html:div>
+        <html:h1>工作台设置</html:h1>
+        <html:p>解析引擎、云端同步与任务行为</html:p>
+      </html:div>
+      <html:span class="settings-badge">本地保存</html:span>
+    </html:header>
+    <html:main>
+      <html:section>
+        <html:h2>解析引擎</html:h2>
+        <html:p class="settings-help">两个引擎可同时配置。解析按优先级使用第一个可用引擎，失败自动切换备用；仅点击解析时消耗额度，已有缓存不会重复解析。</html:p>
+        <html:label>
+          引擎优先级
+          <html:select id="parseEngineOrder">
+            <html:option value="mineru,oxr">MinerU 优先，OXR 备用</html:option>
+            <html:option value="oxr,mineru">OXR 优先，MinerU 备用</html:option>
+          </html:select>
+        </html:label>
+        <html:div class="settings-engine-card">
+          <html:h3>MinerU</html:h3>
+          <html:label>
+            API Token
+            <html:input id="mineruToken" type="password" placeholder="从 mineru.net API 管理页获取" />
+          </html:label>
+          <html:div class="settings-test">
+            <html:button id="test-mineru" class="settings-secondary">测试 MinerU</html:button>
+            <html:span id="test-mineru-result" class="settings-test-result"></html:span>
+          </html:div>
+        </html:div>
+        <html:div class="settings-engine-card">
+          <html:h3>OXR / SoMark</html:h3>
+          <html:label>
+            站点
+            <html:select id="oxrSite">
+              <html:option value="cn">国内站 somark.cn</html:option>
+              <html:option value="intl">海外站 somark.ai</html:option>
+            </html:select>
+          </html:label>
+          <html:label>
+            API Key
+            <html:input id="oxrApiKey" type="password" placeholder="sk-…（Key 与站点绑定）" />
+          </html:label>
+          <html:div class="settings-test">
+            <html:button id="test-oxr" class="settings-secondary">测试 OXR</html:button>
+            <html:span id="test-oxr-result" class="settings-test-result"></html:span>
+          </html:div>
+        </html:div>
+        <html:label class="settings-check">
+          <html:input id="allowPaidQuota" type="checkbox" />允许超出每日免费额度（可能产生费用）
+        </html:label>
+        <html:p class="settings-help" id="quota-hint">默认只使用服务商每日免费额度：MinerU 约 50 篇/天，OXR 约 25 篇/天，跨天自动恢复。</html:p>
+        <html:label class="settings-check">
+          <html:input id="parseConfirmed" type="checkbox" />已了解解析会消耗 API 额度
+        </html:label>
+      </html:section>
+      <html:section>
+        <html:h2>中国科技云 · 数据胶囊</html:h2>
+        <html:p class="settings-help">全文上传成功会显示为已同步；知识库索引状态单独核验。</html:p>
+        <html:label>
+          Endpoint
+          <html:input id="s3Endpoint" type="text" />
+        </html:label>
+        <html:div class="settings-inline">
+          <html:label>
+            Region
+            <html:input id="s3Region" type="text" />
+          </html:label>
+          <html:label>
+            Bucket
+            <html:input id="s3Bucket" type="text" />
+          </html:label>
+        </html:div>
+        <html:label>
+          AccessKey ID
+          <html:input id="s3AccessKey" type="password" />
+        </html:label>
+        <html:label>
+          AccessKey Secret
+          <html:input id="s3Secret" type="password" />
+        </html:label>
+        <html:label>
+          UA 应用名
+          <html:input id="uaApp" type="text" />
+        </html:label>
+        <html:label>
+          密钥文件（可选）
+          <html:input id="s3SecretFile" type="text" placeholder="~/.zrb-secrets/capsule-s3.json" />
+        </html:label>
+        <html:div class="settings-test">
+          <html:button id="test-s3" class="settings-secondary">测试知识库连接</html:button>
+          <html:span id="test-s3-result" class="settings-test-result"></html:span>
+        </html:div>
+      </html:section>
+      <html:section>
+        <html:h2>文件与任务行为</html:h2>
+        <html:label>
+          导出暂存目录
+          <html:input id="stagingDir" type="text" placeholder="留空使用 Zotero 数据目录" />
+        </html:label>
+        <html:label class="settings-check">
+          <html:input id="autoSync" type="checkbox" />文献变更后自动导出并同步（不包含解析）
+        </html:label>
+        <html:label class="settings-check">
+          <html:input id="figuresSync" type="checkbox" />同步时包含图片
+        </html:label>
+        <html:label class="settings-check">
+          <html:input id="verifyUpload" type="checkbox" />上传后验证远端内容
+        </html:label>
+        <html:div class="settings-test">
+          <html:button id="sync-figures" class="settings-secondary">同步图片文件（较慢）</html:button>
+          <html:button id="show-ledger" class="settings-secondary">查看任务账本</html:button>
+          <html:span id="advanced-result" class="settings-test-result"></html:span>
+        </html:div>
+      </html:section>
+      <html:p id="settings-message" class="settings-message"></html:p>
+    </html:main>
+    <html:footer>
+      <html:span>配置仅保存在此设备</html:span>
+      <html:div>
+        <html:button id="settings-cancel" class="settings-secondary">取消</html:button>
+        <html:button id="settings-save" class="settings-primary">保存设置</html:button>
+      </html:div>
+    </html:footer>
+  </html:div>
+</window>

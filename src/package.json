@@ -1,7 +1,7 @@
 {
   "name": "zotero-research-bridge",
   "type": "module",
-  "version": "0.4.0",
+  "version": "0.8.0",
   "description": "Zotero 文献解析与中国科技云知识同步插件",
   "config": {
     "addonName": "ZoteroResearchBridge",
@@ -30,6 +30,7 @@
     "update-deps": "npm update --save"
   },
   "dependencies": {
+    "pdf-lib": "^1.17.1",
     "zotero-plugin-toolkit": "^5.1.0-beta.13"
   },
   "devDependencies": {

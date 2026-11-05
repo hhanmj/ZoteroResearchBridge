@@ -10,11 +10,14 @@ import time
 
 import pymupdf
 
-PREFS = r"<Zotero Profile>/prefs.js"
-ZDIR = r"%USERPROFILE%\Zotero"
+PREFS = os.environ.get("ZRB_PREFS_JS", "")  # Zotero Profile 的 prefs.js 路径
+ZDIR = os.environ.get("ZRB_ZOTERO_DIR", os.path.join(os.path.expanduser("~"), "Zotero"))
 CACHE = os.path.join(ZDIR, "zrb-cache")
-TMP = r"<repo>\tools\dev\tmp"
+TMP = os.path.join(os.path.dirname(os.path.abspath(__file__)), "tmp")
 REPORT = os.path.join(TMP, "parse_hard_report.json")
+
+if not PREFS or not os.path.exists(PREFS):
+    sys.exit("请设置环境变量 ZRB_PREFS_JS 指向 Zotero Profile 的 prefs.js")
 
 os.makedirs(TMP, exist_ok=True)
 LOG_LINES = []
@@ -35,12 +38,15 @@ def pref(name):
 OXR_KEY = pref("oxrApiKey")
 MINERU_TOKEN = pref("mineruToken")
 
-PDFS = {
-    "RDFI7MQ3": r"%USERPROFILE%/Zotero/storage/RDFI7MQ3/Wang和Li - 2009 - Landslide disaster mitigation in three gorges reservoir, china.pdf",
-    "MJ29YYV8": r"%USERPROFILE%/Zotero/storage/MJ29YYV8/van Leijen - Persistent scatterer interferometry based on geodetic estimation theory.pdf",
-    "PC8AIFN3": r"%USERPROFILE%/Zotero/storage/PC8AIFN3/Kramer - Visibility in synthetic aperture radar satellite data metric formulation, observation scheduling, a.pdf",
-    "ZI8SKGJV": r"%USERPROFILE%/Zotero/storage/ZI8SKGJV/JGR Earth Surface - 2020 - Bunn - Geologic Trends in Shear Strength Properties Inferred Through Three‐Dimensional Back.pdf",
+# 待解析附件清单：key -> PDF 文件名（相对 Zotero storage/<key>/ 目录）。
+# 按自己的文献库替换；这是当初实测的四篇"硬骨头"样例。
+PDF_FILES = {
+    "RDFI7MQ3": "Wang和Li - 2009 - Landslide disaster mitigation in three gorges reservoir, china.pdf",
+    "MJ29YYV8": "van Leijen - Persistent scatterer interferometry based on geodetic estimation theory.pdf",
+    "PC8AIFN3": "Kramer - Visibility in synthetic aperture radar satellite data metric formulation, observation scheduling, a.pdf",
+    "ZI8SKGJV": "JGR Earth Surface - 2020 - Bunn - Geologic Trends in Shear Strength Properties Inferred Through Three‐Dimensional Back.pdf",
 }
+PDFS = {k: os.path.join(ZDIR, "storage", k, v) for k, v in PDF_FILES.items()}
 
 IMAGES_RE = re.compile(r"images/([A-Za-z0-9_.-]+\.(?:jpe?g|png|gif|bmp|webp))", re.I)
 

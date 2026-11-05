@@ -10,9 +10,9 @@ import time
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import s3_capsule as S  # noqa: E402
 
-EXPORT = r"%USERPROFILE%\Zotero\zrb-export\papers"
-ZDIR = r"%USERPROFILE%\Zotero"
-REPORT = r"<repo>\tools\dev\tmp\restore_report.json"
+ZDIR = os.environ.get("ZRB_ZOTERO_DIR", os.path.join(os.path.expanduser("~"), "Zotero"))
+EXPORT = os.path.join(ZDIR, "zrb-export", "papers")
+REPORT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "tmp", "restore_report.json")
 
 cfg = S.load_config()
 LOG = []

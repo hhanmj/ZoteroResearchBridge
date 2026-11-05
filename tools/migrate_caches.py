@@ -8,8 +8,8 @@
   - 云端 /zotero/ WebDAV 空间
 
 用法：
-  python migrate_caches.py --zotero-dir "%USERPROFILE%/Zotero" \
-      --out "E:/.../ZoteroResearchBridge/export" [--limit N] [--ids 1029,1112] [--report-only]
+  python migrate_caches.py --zotero-dir "<你的 Zotero 数据目录>" \
+      --out "<导出目录>" [--limit N] [--ids 1029,1112] [--report-only]
 
 输出布局（按项目书 §4）：
   export/

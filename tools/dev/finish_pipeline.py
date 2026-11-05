@@ -14,7 +14,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import s3_capsule as S  # noqa: E402
 
-ZDIR = r"%USERPROFILE%\Zotero"
+ZDIR = os.environ.get("ZRB_ZOTERO_DIR", os.path.join(os.path.expanduser("~"), "Zotero"))
 CACHE = os.path.join(ZDIR, "zrb-cache")
 EXPORT = os.path.join(ZDIR, "zrb-export")
 STAGING = os.path.join(ZDIR, "zrb-upload-staging")
